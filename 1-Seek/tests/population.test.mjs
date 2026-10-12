@@ -17,10 +17,10 @@ class Vector {
 function scene(w = 800, h = 600) {
   const context = vm.createContext({ createVector: (x, y) => new Vector(x, y),
     p5: { Vector }, width: w, height: h });
-  for (const file of ['vehicle.js', 'population.js', 'mouseTarget.js']) {
+  for (const file of ['vehicle.js', 'population.js', 'mouseTarget.js', 'randomTarget.js']) {
     vm.runInContext(readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'), context);
   }
-  return vm.runInContext('({ Vehicle, MouseTarget, population: SeekPopulation })', context);
+  return vm.runInContext('({ Vehicle, MouseTarget, RandomTarget, population: SeekPopulation })', context);
 }
 const rng = () => 0.1;
 const target = new Vector(400, 300);
@@ -138,4 +138,40 @@ test('population : arrivées simultanées et véhicules supprimés non mis à jo
 test('MouseTarget hérite de Vehicle et garde le rayon visuel attendu', () => {
   const { Vehicle, MouseTarget } = scene(); const t = new MouseTarget(50, 60);
   assert.ok(t instanceof Vehicle); assert.equal(t.r, 16); assert.equal(t.vel.mag(), 0);
+});
+
+test('RandomTarget combine déplacement aléatoire et fuite du véhicule le plus proche', () => {
+  const { Vehicle, RandomTarget } = scene();
+  const t = new RandomTarget(400, 300, rng);
+  const pursuer = new Vehicle(420, 300);
+  const originalX = t.pos.x;
+
+  assert.ok(t instanceof Vehicle);
+  t.step([pursuer], 800, 600);
+  assert.ok(t.pos.x < originalX, 'La force de fuite éloigne la cible du poursuivant');
+  assert.ok(t.vel.mag() <= t.maxSpeed + 1e-12);
+  assert.equal(t.acc.mag(), 0);
+
+  const withoutPursuer = new RandomTarget(400, 300, rng);
+  withoutPursuer.step([], 800, 600);
+  assert.ok(withoutPursuer.pos.x !== 400 || withoutPursuer.pos.y !== 300,
+    'La cible se dirige vers son waypoint aléatoire sans poursuivant');
+});
+
+test('RandomTarget ne fuit que dans son rayon d’évitement et combine les menaces proches', () => {
+  const { Vehicle, RandomTarget } = scene();
+  const t = new RandomTarget(400, 300, rng);
+  t.framesUntilWander = 20;
+  t.wanderTarget.set(400, 100);
+  let fleeCalls = 0;
+  const flee = t.flee.bind(t);
+  t.flee = position => { fleeCalls++; return flee(position); };
+
+  t.step([new Vehicle(600, 300)], 800, 600);
+  assert.equal(fleeCalls, 0, 'Un véhicule au-delà du rayon ne déclenche pas la fuite');
+
+  const closeVehicles = [new Vehicle(500, 300), new Vehicle(400, 400)];
+  t.step(closeVehicles, 800, 600);
+  assert.equal(fleeCalls, 2, 'Les deux menaces dans le rayon contribuent à l’évitement');
+  assert.equal(t.avoidanceRadius, 160);
 });
