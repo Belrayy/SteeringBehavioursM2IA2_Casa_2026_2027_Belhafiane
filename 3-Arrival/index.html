@@ -11,9 +11,49 @@
     <script src="libraries/p5.min.js"></script>
     <script src="libraries/p5.sound.min.js"></script>
     <script src="vehicle.js"></script>
+    <script src="gameRules.js"></script>
+    <script src="snakeSegment.js"></script>
+    <script src="snake.js"></script>
+    <script src="food.js"></script>
+    <script src="obstacle.js"></script>
     <script src="sketch.js"></script>
   </head>
   <body>
-    <!-- Pas besoin de déclarer un canvas pour dessiner en P5.js -->
+    <main class="game-ui">
+      <section id="start-menu" class="panel" aria-labelledby="menu-title">
+        <h1 id="menu-title">Mouse Snake</h1>
+        <p>Guide the snake with your mouse and collect food to grow.</p>
+        <label for="starting-size">Starting snake size</label>
+        <select id="starting-size">
+          <option value="4">Small</option>
+          <option value="7" selected>Medium</option>
+          <option value="11">Large</option>
+        </select>
+        <label for="food-rate">Food spawn rate</label>
+        <select id="food-rate">
+          <option value="1800">Slow</option>
+          <option value="1100" selected>Normal</option>
+          <option value="600">Fast</option>
+        </select>
+        <label class="checkbox-label" for="bad-food-enabled">
+          <input id="bad-food-enabled" type="checkbox" checked>
+          Include bad food
+        </label>
+        <button id="start-button" type="button">Start</button>
+      </section>
+
+      <section id="scoreboard" class="scoreboard" aria-live="polite" hidden>
+        <span>Score: <strong id="score-value">0</strong></span>
+        <span>Time: <strong id="timer-value">00:00</strong></span>
+      </section>
+
+      <section id="game-over" class="panel" aria-labelledby="game-over-title" hidden>
+        <h2 id="game-over-title">Game over</h2>
+        <p>Score: <strong id="final-score">0</strong></p>
+        <p>High score: <strong id="high-score">0</strong></p>
+        <button id="restart-button" type="button">Play again</button>
+        <button id="menu-button" class="secondary-button" type="button">Main menu</button>
+      </section>
+    </main>
   </body>
 </html>

@@ -1,8 +1,92 @@
 html, body {
   margin: 0;
   padding: 0;
+  min-height: 100%;
+  background: #71b84b;
+  color: #18351d;
+  font-family: Arial, sans-serif;
 }
 
 canvas {
   display: block;
+}
+
+.game-ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(340px, calc(100vw - 48px));
+  padding: 24px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #315c2b;
+  border-radius: 12px;
+  background: rgba(238, 248, 222, 0.96);
+  box-shadow: 0 8px 24px rgba(24, 53, 29, 0.22);
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.panel h1,
+.panel h2 {
+  margin: 0 0 10px;
+}
+
+.panel p {
+  margin: 8px 0 18px;
+}
+
+.panel label {
+  display: block;
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+
+.panel select {
+  width: 100%;
+  padding: 8px;
+}
+
+.panel .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #347a35;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.panel .secondary-button {
+  margin-top: 8px;
+  background: #607b5b;
+}
+
+.scoreboard {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  gap: 20px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(238, 248, 222, 0.92);
+  pointer-events: auto;
+}
+
+[hidden] {
+  display: none !important;
 }
