@@ -13,25 +13,55 @@
     <script src="sketch.js"></script>
   </head>
   <body>
-    <header id="controls">
-      <label for="vehicle-count">Véhicules :</label>
-      <input id="vehicle-count" type="range" min="1" max="200" step="1" value="20">
-      <output id="vehicle-count-value" for="vehicle-count">20 / 200</output>
-      <label for="vehicle-speed">Vitesse max :</label>
-      <input id="vehicle-speed" type="range" min="0.5" max="10" step="0.1" value="4">
-      <output id="vehicle-speed-value" for="vehicle-speed">4.0 px/frame</output>
-      <label for="vehicle-force">Force max :</label>
-      <input id="vehicle-force" type="range" min="0.01" max="0.5" step="0.01" value="0.10">
-      <output id="vehicle-force-value" for="vehicle-force">0.10</output>
-      <button id="background-toggle" type="button" aria-pressed="true">Désactiver le fond LSD</button>
-      <button id="music-toggle" type="button" aria-pressed="false">Activer la musique</button>
-      <button id="target-mode-toggle" type="button" aria-pressed="false">Activer la cible fuyante</button>
-      <label for="target-count">Cibles fuyantes :</label>
-      <input id="target-count" type="range" min="1" max="20" step="1" value="1">
-      <output id="target-count-value" for="target-count">1 / 20</output>
-      <span id="music-status" class="hint" role="status" aria-live="polite"></span>
-      <span id="target-hint" class="hint">Déplacez la souris dans la scène pour guider la cible rouge. Le cercle autour des cibles fuyantes indique leur rayon d’évitement.</span>
-    </header>
+    <aside id="controls" aria-label="Réglages de la simulation">
+      <h1>Commandes</h1>
+      <section class="control-group" aria-labelledby="environment-heading">
+        <h2 id="environment-heading">Musique et arrière-plan</h2>
+        <button id="background-toggle" type="button" aria-pressed="true">Désactiver le fond LSD</button>
+        <button id="music-toggle" type="button" aria-pressed="false">Activer la musique</button>
+        <span id="music-status" class="hint" role="status" aria-live="polite"></span>
+      </section>
+      <section class="control-group" aria-labelledby="vehicle-heading">
+        <h2 id="vehicle-heading">Véhicules</h2>
+        <div class="control-field">
+          <label for="vehicle-count">Nombre de véhicules</label>
+          <input id="vehicle-count" type="range" min="1" max="200" step="1" value="20">
+          <output id="vehicle-count-value" for="vehicle-count">20 / 200</output>
+        </div>
+        <div class="control-field">
+          <label for="vehicle-speed">Vitesse maximale</label>
+          <input id="vehicle-speed" type="range" min="0.5" max="10" step="0.1" value="4">
+          <output id="vehicle-speed-value" for="vehicle-speed">4.0 px/frame</output>
+        </div>
+        <div class="control-field">
+          <label for="vehicle-force">Force maximale</label>
+          <input id="vehicle-force" type="range" min="0.01" max="0.5" step="0.01" value="0.10">
+          <output id="vehicle-force-value" for="vehicle-force">0.10</output>
+        </div>
+      </section>
+      <section class="control-group" aria-labelledby="mouse-target-heading">
+        <h2 id="mouse-target-heading">Cible pilotée à la souris</h2>
+        <span id="target-hint" class="hint">Déplacez la souris dans la scène pour guider la cible rouge.</span>
+        <button id="target-mode-toggle" type="button" aria-pressed="false">Activer la cible fuyante</button>
+      </section>
+      <section class="control-group" aria-labelledby="flee-target-heading">
+        <h2 id="flee-target-heading">Cibles fuyantes</h2>
+        <div class="control-field">
+          <label for="target-count">Nombre de cibles</label>
+          <input id="target-count" type="range" min="1" max="20" step="1" value="1">
+          <output id="target-count-value" for="target-count">1 / 20</output>
+        </div>
+        <div class="control-field">
+          <label for="target-radius">Rayon de fuite</label>
+          <input id="target-radius" type="range" min="40" max="400" step="10" value="160">
+          <output id="target-radius-value" for="target-radius">160 px</output>
+        </div>
+        <button id="target-flee-boost-toggle" type="button" aria-pressed="false">Améliorer leur fuite</button>
+      </section>
+    </aside>
+    <output id="target-caught-counter" aria-live="polite" aria-atomic="true">
+      Cibles attrapées : <span id="target-caught-count">0</span>
+    </output>
     <main id="scene" aria-label="Simulation de véhicules poursuivant une cible"></main>
     <script src="music.js"></script>
   </body>

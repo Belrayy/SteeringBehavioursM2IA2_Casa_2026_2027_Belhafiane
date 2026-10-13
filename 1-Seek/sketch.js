@@ -10,8 +10,12 @@ let musicToggle;
 let musicStatus;
 let musicEnabled = false;
 let autonomousTarget = false;
+let targetFleeBoostEnabled = false;
+let targetsCaught = 0;
 const INITIAL_TARGET_COUNT = 1;
 const MAX_TARGET_COUNT = 20;
+const INITIAL_TARGET_AVOIDANCE_RADIUS = 160;
+let targetAvoidanceRadius = INITIAL_TARGET_AVOIDANCE_RADIUS;
 
 function resizeRandomTargets(count) {
   if (!Number.isInteger(count) || count < 1 || count > MAX_TARGET_COUNT) {
@@ -23,7 +27,10 @@ function resizeRandomTargets(count) {
     const position = randomTargets.length === 0 && target
       ? target.pos
       : { x: Math.random() * width, y: Math.random() * height };
-    randomTargets.push(new RandomTarget(position.x, position.y));
+    const randomTarget = new RandomTarget(position.x, position.y);
+    randomTarget.avoidanceRadius = targetAvoidanceRadius;
+    randomTarget.setFleeBoost(targetFleeBoostEnabled);
+    randomTargets.push(randomTarget);
   }
 
   if (autonomousTarget) target = randomTargets[0];
@@ -42,12 +49,33 @@ function closestTarget(vehicle, targets) {
   return closest;
 }
 
-function sceneHeight() {
-  return Math.max(1, windowHeight - document.getElementById('controls').offsetHeight);
+function catchTarget(caughtTarget, vehicle) {
+  const targetIndex = randomTargets.indexOf(caughtTarget);
+  if (targetIndex === -1) return;
+
+  const children = caughtTarget.split(vehicle, width, height);
+  targetsCaught++;
+  if (children) {
+    randomTargets.splice(targetIndex, 1, ...children);
+  } else {
+    randomTargets.splice(targetIndex, 1);
+  }
+  target = randomTargets[0] ?? target;
+  document.getElementById('target-caught-count').textContent = String(targetsCaught);
+}
+
+function sceneDimensions() {
+  const { width: sceneWidth, height: sceneHeight } =
+    document.getElementById('scene').getBoundingClientRect();
+  return {
+    width: Math.max(1, sceneWidth),
+    height: Math.max(1, sceneHeight),
+  };
 }
 
 function setup() {
-  sceneCanvas = createCanvas(windowWidth, sceneHeight());
+  const dimensions = sceneDimensions();
+  sceneCanvas = createCanvas(dimensions.width, dimensions.height);
   sceneCanvas.parent('scene');
   target = new MouseTarget(width / 2, height / 2);
 
@@ -89,8 +117,12 @@ function setup() {
 
   const targetModeToggle = document.getElementById('target-mode-toggle');
   const targetHint = document.getElementById('target-hint');
+  const targetFleeBoostToggle = document.getElementById('target-flee-boost-toggle');
+  const targetCaughtCount = document.getElementById('target-caught-count');
   const targetCountSlider = document.getElementById('target-count');
   const targetCountValue = document.getElementById('target-count-value');
+  const targetRadiusSlider = document.getElementById('target-radius');
+  const targetRadiusValue = document.getElementById('target-radius-value');
   targetCountSlider.value = INITIAL_TARGET_COUNT;
   resizeRandomTargets(INITIAL_TARGET_COUNT);
   targetCountValue.value = `${INITIAL_TARGET_COUNT} / ${MAX_TARGET_COUNT}`;
@@ -99,9 +131,33 @@ function setup() {
     resizeRandomTargets(count);
     targetCountValue.value = `${randomTargets.length} / ${MAX_TARGET_COUNT}`;
   });
+  targetRadiusSlider.value = INITIAL_TARGET_AVOIDANCE_RADIUS;
+  targetRadiusValue.value = `${INITIAL_TARGET_AVOIDANCE_RADIUS} px`;
+  targetRadiusSlider.addEventListener('input', () => {
+    targetAvoidanceRadius = Number(targetRadiusSlider.value);
+    targetRadiusValue.value = `${targetAvoidanceRadius} px`;
+    for (const randomTarget of randomTargets) {
+      randomTarget.avoidanceRadius = targetAvoidanceRadius;
+    }
+    if (autonomousTarget) {
+      targetHint.textContent = `Les cibles rouges se déplacent aléatoirement et fuient les véhicules dans leur rayon de ${targetAvoidanceRadius} px.`;
+    }
+  });
+  targetFleeBoostToggle.addEventListener('click', () => {
+    targetFleeBoostEnabled = !targetFleeBoostEnabled;
+    targetFleeBoostToggle.setAttribute('aria-pressed', String(targetFleeBoostEnabled));
+    targetFleeBoostToggle.textContent = targetFleeBoostEnabled
+      ? 'Désactiver la fuite améliorée'
+      : 'Améliorer leur fuite';
+    for (const randomTarget of randomTargets) randomTarget.setFleeBoost(targetFleeBoostEnabled);
+  });
+  targetCaughtCount.textContent = String(targetsCaught);
 
   targetModeToggle.addEventListener('click', () => {
     autonomousTarget = !autonomousTarget;
+    if (autonomousTarget && randomTargets.length === 0) {
+      resizeRandomTargets(Number(targetCountSlider.value));
+    }
     target = autonomousTarget
       ? randomTargets[0]
       : new MouseTarget(target.pos.x, target.pos.y);
@@ -110,7 +166,7 @@ function setup() {
       ? 'Revenir à la cible souris'
       : 'Activer la cible fuyante';
     targetHint.textContent = autonomousTarget
-      ? 'Les cibles rouges se déplacent aléatoirement et fuient les véhicules dans leur rayon de 160 px.'
+      ? `Les cibles rouges se déplacent aléatoirement et fuient les véhicules dans leur rayon de ${targetAvoidanceRadius} px.`
       : 'Déplacez la souris dans la scène pour guider la cible rouge.';
   });
 
@@ -177,18 +233,25 @@ function draw() {
   drawBackground();
   const activeTargets = autonomousTarget ? randomTargets : [target];
   if (autonomousTarget) {
-    for (const randomTarget of randomTargets) randomTarget.step(vehicles, width, height);
+    for (const randomTarget of [...randomTargets]) randomTarget.step(vehicles, width, height);
+    for (const vehicle of vehicles) {
+      const caughtTarget = randomTargets.find(candidate => candidate.isCaughtBy(vehicle));
+      if (caughtTarget) catchTarget(caughtTarget, vehicle);
+    }
   }
   for (const vehicle of vehicles) {
-    const vehicleTarget = closestTarget(vehicle, activeTargets);
-    SeekPopulation.step(vehicle, vehicleTarget.pos, width, height);
+    if (activeTargets.length > 0) {
+      const vehicleTarget = closestTarget(vehicle, activeTargets);
+      SeekPopulation.step(vehicle, vehicleTarget.pos, width, height);
+    }
     vehicle.show();
   }
   for (const activeTarget of activeTargets) activeTarget.show();
 }
 
 function windowResized() {
-  resizeCanvas(windowWidth, sceneHeight());
+  const dimensions = sceneDimensions();
+  resizeCanvas(dimensions.width, dimensions.height);
   target.pos.set(constrain(target.pos.x, 0, width), constrain(target.pos.y, 0, height));
   for (const randomTarget of randomTargets) randomTarget.edges();
   for (const vehicle of vehicles) vehicle.edges();

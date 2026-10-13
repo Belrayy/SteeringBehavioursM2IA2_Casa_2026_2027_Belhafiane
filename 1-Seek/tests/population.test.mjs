@@ -174,4 +174,51 @@ test('RandomTarget ne fuit que dans son rayon d’évitement et combine les mena
   t.step(closeVehicles, 800, 600);
   assert.equal(fleeCalls, 2, 'Les deux menaces dans le rayon contribuent à l’évitement');
   assert.equal(t.avoidanceRadius, 160);
+
+  const adjustableTarget = new RandomTarget(400, 300, rng);
+  adjustableTarget.avoidanceRadius = 220;
+  adjustableTarget.framesUntilWander = 20;
+  adjustableTarget.wanderTarget.set(400, 100);
+  let adjustableFleeCalls = 0;
+  adjustableTarget.flee = () => {
+    adjustableFleeCalls++;
+    return new Vector(0, -0.1);
+  };
+  adjustableTarget.step([new Vehicle(580, 300)], 800, 600);
+  assert.equal(adjustableFleeCalls, 1, 'Un rayon plus grand étend la zone de fuite');
+
+  adjustableTarget.avoidanceRadius = 80;
+  adjustableTarget.framesUntilWander = 20;
+  adjustableTarget.wanderTarget.set(400, 100);
+  adjustableFleeCalls = 0;
+  adjustableTarget.step([new Vehicle(500, 300)], 800, 600);
+  assert.equal(adjustableFleeCalls, 0, 'Un rayon plus petit réduit la zone de fuite');
+});
+
+test('RandomTarget : boost de fuite, division en cibles plus petites et rattrapage final', () => {
+  const { Vehicle, RandomTarget } = scene();
+  const original = new RandomTarget(400, 300, rng);
+  original.avoidanceRadius = 220;
+  original.setFleeBoost(true);
+  assert.equal(original.maxSpeed, 3 * 1.75);
+  assert.equal(original.maxForce, 0.12 * 1.75);
+
+  const pursuer = new Vehicle(400, 320);
+  assert.equal(original.isCaughtBy(pursuer), true);
+  const children = original.split(pursuer, 800, 600);
+  assert.equal(children.length, 2);
+  assert.ok(children.every(child => child.r < original.r));
+  assert.ok(children.every(child => child.maxSpeed < original.maxSpeed));
+  assert.ok(children.every(child => child.avoidanceRadius === 220));
+  assert.ok(children.every(child => child.fleeBoostEnabled));
+  assert.ok(children.every(child => child.isCaughtBy(pursuer) === false));
+
+  const child = children[0];
+  const childPursuer = new Vehicle(child.pos.x, child.pos.y);
+  assert.equal(child.isCaughtBy(childPursuer), true);
+  assert.equal(child.split(childPursuer, 800, 600), null);
+
+  original.setFleeBoost(false);
+  assert.equal(original.maxSpeed, 3);
+  assert.equal(original.maxForce, 0.12);
 });

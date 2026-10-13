@@ -6,20 +6,64 @@ html, body {
   font-family: system-ui, sans-serif;
 }
 
-#controls {
+body {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  padding: 10px 16px;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#controls {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 300px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  padding: 22px 18px;
   background: #20242c;
+  overflow-y: auto;
+}
+
+#controls h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.control-group {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #414753;
+}
+
+.control-group h2 {
+  margin: 0;
+  color: #b9ccf5;
+  font-size: 0.95rem;
+}
+
+.control-field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 5px 8px;
+}
+
+.control-field label {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 0.9rem;
 }
 
 #vehicle-count,
 #vehicle-speed,
 #vehicle-force,
-#target-count {
-  width: clamp(120px, 30vw, 320px);
+#target-count,
+#target-radius {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
   min-height: 28px;
   accent-color: #89b4ff;
 }
@@ -27,8 +71,13 @@ html, body {
 #vehicle-count-value,
 #vehicle-speed-value,
 #vehicle-force-value,
-#target-count-value {
-  min-width: 80px;
+#target-count-value,
+#target-radius-value {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  color: #c5cbd5;
+  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -43,39 +92,32 @@ html, body {
   cursor: pointer;
 }
 
+#music-toggle,
+#target-mode-toggle,
+#target-flee-boost-toggle {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid #89b4ff;
+  border-radius: 6px;
+  background: #303849;
+  color: #f5f5f5;
+  font: inherit;
+  cursor: pointer;
+}
+
 #background-toggle:hover,
 #music-toggle:hover,
-#target-mode-toggle:hover {
+#target-mode-toggle:hover,
+#target-flee-boost-toggle:hover {
   background: #414d64;
 }
 
 #background-toggle:focus-visible,
 #music-toggle:focus-visible,
-#target-mode-toggle:focus-visible {
+#target-mode-toggle:focus-visible,
+#target-flee-boost-toggle:focus-visible {
   outline: 2px solid #89b4ff;
   outline-offset: 2px;
-}
-
-#music-toggle {
-  min-height: 32px;
-  padding: 4px 10px;
-  border: 1px solid #89b4ff;
-  border-radius: 6px;
-  background: #303849;
-  color: #f5f5f5;
-  font: inherit;
-  cursor: pointer;
-}
-
-#target-mode-toggle {
-  min-height: 32px;
-  padding: 4px 10px;
-  border: 1px solid #89b4ff;
-  border-radius: 6px;
-  background: #303849;
-  color: #f5f5f5;
-  font: inherit;
-  cursor: pointer;
 }
 
 .hint {
@@ -83,6 +125,40 @@ html, body {
   color: #c5cbd5;
 }
 
+#scene {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+#target-caught-counter {
+  position: fixed;
+  z-index: 1;
+  top: 16px;
+  right: 16px;
+  padding: 8px 12px;
+  border: 1px solid #89b4ff;
+  border-radius: 8px;
+  background: rgb(32 36 44 / 90%);
+  color: #f5f5f5;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
 canvas {
   display: block;
+}
+
+@media (max-width: 720px) {
+  body {
+    flex-direction: column;
+  }
+
+  #controls {
+    flex: 0 1 auto;
+    max-height: 52vh;
+    gap: 14px;
+    padding: 16px;
+  }
 }
