@@ -1,4 +1,6 @@
 let target;
+let scenarios;
+let debugMode = false;
 const vehicles = [];
 const randomTargets = [];
 let sceneCanvas;
@@ -201,10 +203,10 @@ function setup() {
   sceneCanvas.elt.addEventListener('pointermove', event => {
     if (autonomousTarget) return;
     const rect = sceneCanvas.elt.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * width / rect.width;
-    const y = (event.clientY - rect.top) * height / rect.height;
-    if (x >= 0 && x <= width && y >= 0 && y <= height) target.pos.set(x, y);
+    ambiencePointer.x = SeekAmbience.clamp((event.clientX - rect.left) / rect.width);
+    ambiencePointer.y = SeekAmbience.clamp((event.clientY - rect.top) / rect.height);
   });
+  window.addEventListener('pagehide', () => { void audioEngine.stop(); });
 }
 
 function drawBackground() {
@@ -255,4 +257,39 @@ function windowResized() {
   target.pos.set(constrain(target.pos.x, 0, width), constrain(target.pos.y, 0, height));
   for (const randomTarget of randomTargets) randomTarget.edges();
   for (const vehicle of vehicles) vehicle.edges();
+}
+
+function bindScenarioControls() {
+  const modeSelect = document.getElementById('scenario');
+  modeSelect.addEventListener('change', () => {
+    scenarios.setMode(modeSelect.value);
+    target = scenarios.target;
+    document.getElementById('flee-controls').hidden = scenarios.mode !== 'flee';
+    windowResized();
+  });
+  const fields = [
+    ['detection-radius', 'detectionRadius'],
+    ['exit-distance', 'exitDistance'],
+    ['flee-duration', 'maxFleeDuration']
+  ];
+  for (const [id, setting] of fields) {
+    const input = document.getElementById(id);
+    const update = () => {
+      scenarios.fleeingTargets.forEach(sceneTarget =>
+        sceneTarget.setFleeSettings({ [setting]: Number(input.value) }));
+      for (const [fieldId, parameter] of fields) {
+        const value = scenarios.fleeingTarget[parameter];
+        document.getElementById(fieldId).value = value;
+        document.getElementById(fieldId + '-value').value = value + (parameter === 'maxFleeDuration' ? ' s' : ' px');
+      }
+    };
+    input.addEventListener('input', update);
+  }
+  const checkbox = document.getElementById('debug');
+  const setDebug = value => { debugMode = value; SeekVehicle.debug = value; checkbox.checked = value; };
+  checkbox.addEventListener('change', () => setDebug(checkbox.checked));
+  document.addEventListener('keydown', event => {
+    const textField = event.target.matches?.('input[type="text"], input[type="number"], textarea');
+    if (event.key.toLowerCase() === 'd' && !event.repeat && !textField) setDebug(!debugMode);
+  });
 }
