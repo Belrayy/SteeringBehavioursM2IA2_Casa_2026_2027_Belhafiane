@@ -25,7 +25,7 @@ function setup() {
 }
 
 function draw() {
-  background("#71b84b");
+  drawArena();
 
   if (gameState !== "playing") {
     return;
@@ -54,6 +54,49 @@ function draw() {
 
   collectFood();
   updateScoreboard();
+}
+
+function drawArena() {
+  background("#07131c");
+
+  const gradient = drawingContext.createRadialGradient(
+    width * 0.5, height * 0.42, 0, width * 0.5, height * 0.42, Math.max(width, height) * 0.78
+  );
+  gradient.addColorStop(0, "#16372f");
+  gradient.addColorStop(0.52, "#0c2427");
+  gradient.addColorStop(1, "#07131c");
+  drawingContext.fillStyle = gradient;
+  drawingContext.fillRect(0, 0, width, height);
+
+  push();
+  stroke(137, 210, 176, 14);
+  strokeWeight(1);
+  const gridSize = 48;
+  for (let x = gridSize; x < width; x += gridSize) {
+    line(x, 0, x, height);
+  }
+  for (let y = gridSize; y < height; y += gridSize) {
+    line(0, y, width, y);
+  }
+
+  noStroke();
+  for (let index = 0; index < 75; index += 1) {
+    const x = (index * 127.1 % 997) / 997 * width;
+    const y = (index * 311.7 % 991) / 991 * height;
+    const twinkle = 0.35 + (Math.sin(frameCount * 0.035 + index * 4.7) + 1) * 0.3;
+    fill(190, 255, 221, twinkle * 95);
+    circle(x, y, index % 9 === 0 ? 2.4 : 1.3);
+  }
+  pop();
+
+  const vignette = drawingContext.createRadialGradient(
+    width / 2, height / 2, Math.min(width, height) * 0.2,
+    width / 2, height / 2, Math.max(width, height) * 0.72
+  );
+  vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
+  vignette.addColorStop(1, "rgba(0, 0, 0, 0.38)");
+  drawingContext.fillStyle = vignette;
+  drawingContext.fillRect(0, 0, width, height);
 }
 
 function startGame() {
@@ -207,9 +250,14 @@ function playFoodSound(frequency) {
 }
 
 function drawMouseTarget() {
+  const pulse = 16 + Math.sin(frameCount * 0.12) * 4;
+  noFill();
+  stroke(251, 191, 36, 145);
+  strokeWeight(1.5);
+  circle(target.x, target.y, pulse);
   noStroke();
-  fill("#e64b3c");
-  circle(target.x, target.y, 12);
+  fill("#fbbf24");
+  circle(target.x, target.y, 5);
 }
 
 function updateScoreboard() {

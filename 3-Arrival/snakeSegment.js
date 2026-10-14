@@ -13,8 +13,13 @@ class SnakeSegment extends Vehicle {
   }
 
   show(colorValue) {
-    noStroke();
+    stroke(8, 65, 48, 180);
+    strokeWeight(1.5);
     fill(colorValue);
     circle(this.pos.x, this.pos.y, this.r * 1.8);
+
+    noStroke();
+    fill(236, 255, 243, 74);
+    circle(this.pos.x - this.r * 0.22, this.pos.y - this.r * 0.24, this.r * 0.38);
   }
 }

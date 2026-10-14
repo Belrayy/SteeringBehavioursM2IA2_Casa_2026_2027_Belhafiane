@@ -4,7 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Sketch</title>
+    <meta name="theme-color" content="#07131c">
+    <meta name="description" content="A glowing little garden. Guide your snake, collect starlit fruit, and see how long you can survive.">
+    <title>Glow Garden — Mouse Snake</title>
 
     <link rel="stylesheet" type="text/css" href="style.css">
 
@@ -21,39 +23,53 @@
   <body>
     <main class="game-ui">
       <section id="start-menu" class="panel" aria-labelledby="menu-title">
-        <h1 id="menu-title">Mouse Snake</h1>
-        <p>Guide the snake with your mouse and collect food to grow.</p>
-        <label for="starting-size">Starting snake size</label>
-        <select id="starting-size">
+        <div class="eyebrow"><span class="status-dot"></span> A tiny game for curious hands</div>
+        <div class="title-mark" aria-hidden="true">✳</div>
+        <h1 id="menu-title">Glow Garden<span>.</span></h1>
+        <p class="intro">A little creature. A living garden. Follow your cursor and see where the night takes you.</p>
+        <div class="settings">
+          <label for="starting-size">Your starting size</label>
+          <select id="starting-size">
           <option value="4">Small</option>
           <option value="7" selected>Medium</option>
           <option value="11">Large</option>
-        </select>
-        <label for="food-rate">Food spawn rate</label>
-        <select id="food-rate">
+          </select>
+          <label for="food-rate">Garden pace</label>
+          <select id="food-rate">
           <option value="1800">Slow</option>
           <option value="1100" selected>Normal</option>
           <option value="600">Fast</option>
-        </select>
-        <label class="checkbox-label" for="bad-food-enabled">
-          <input id="bad-food-enabled" type="checkbox" checked>
-          Include bad food
-        </label>
-        <button id="start-button" type="button">Start</button>
+          </select>
+          <label class="checkbox-label" for="bad-food-enabled">
+            <input id="bad-food-enabled" type="checkbox" checked>
+            <span>Include tricky fruit</span>
+          </label>
+        </div>
+        <button id="start-button" class="primary-button" type="button">Enter the garden <span aria-hidden="true">↗</span></button>
+        <p class="control-hint"><kbd>Move</kbd> Guide with your mouse <span>·</span> Eat fruit to grow</p>
       </section>
 
-      <section id="scoreboard" class="scoreboard" aria-live="polite" hidden>
-        <span>Score: <strong id="score-value">0</strong></span>
-        <span>Time: <strong id="timer-value">00:00</strong></span>
+      <section id="scoreboard" class="scoreboard" aria-live="polite" aria-label="Game stats" hidden>
+        <div class="brand"><span class="brand-icon">✳</span><span>GLOW<br><b>GARDEN</b></span></div>
+        <div class="stat"><span class="stat-label">NECTAR</span><strong id="score-value">0</strong></div>
+        <div class="stat"><span class="stat-label">TIME</span><strong id="timer-value">00:00</strong></div>
+        <div class="game-tip"><span class="status-dot"></span> Follow the light</div>
       </section>
 
       <section id="game-over" class="panel" aria-labelledby="game-over-title" hidden>
-        <h2 id="game-over-title">Game over</h2>
-        <p>Score: <strong id="final-score">0</strong></p>
-        <p>High score: <strong id="high-score">0</strong></p>
-        <button id="restart-button" type="button">Play again</button>
-        <button id="menu-button" class="secondary-button" type="button">Main menu</button>
+        <div class="eyebrow"><span class="status-dot"></span> The garden is resting</div>
+        <div class="title-mark" aria-hidden="true">☾</div>
+        <h2 id="game-over-title">Lovely run<span>.</span></h2>
+        <p class="intro">Every ending leaves a little more light behind.</p>
+        <div class="result-cards">
+          <div><span>NECTAR GATHERED</span><strong id="final-score">0</strong></div>
+          <div><span>PERSONAL BEST</span><strong id="high-score">0</strong></div>
+        </div>
+        <button id="restart-button" class="primary-button" type="button">Play again <span aria-hidden="true">↗</span></button>
+        <button id="menu-button" class="secondary-button" type="button">Back to the garden</button>
       </section>
+
+      <div class="corner-note" aria-hidden="true">GROW GENTLY <span>✳</span> STAY CURIOUS</div>
     </main>
   </body>
 </html>

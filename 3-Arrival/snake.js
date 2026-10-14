@@ -47,18 +47,24 @@ class Snake extends Vehicle {
 
   show() {
     for (let index = this.segments.length - 1; index >= 0; index -= 1) {
-      const shade = map(index, 0, Math.max(1, this.segments.length), 105, 45);
-      this.segments[index].show(color(20, shade, 38));
+      const progress = map(index, 0, Math.max(1, this.segments.length), 0, 1);
+      const segmentColor = lerpColor(color("#b8ffd3"), color("#27b982"), progress);
+      this.segments[index].show(segmentColor);
     }
 
     noStroke();
-    fill("#38a34a");
+    fill(52, 211, 153, 48);
+    circle(this.pos.x, this.pos.y, this.r * 2.7);
+    stroke("#c8ffe0");
+    strokeWeight(2);
+    fill("#56e6a2");
     circle(this.pos.x, this.pos.y, this.r * 2);
 
+    noStroke();
     const heading = this.vel.magSq() > 0.01 ? this.vel.heading() : 0;
     const eyeOffset = this.r * 0.42;
-    const eyeSize = this.r * 0.3;
-    fill("#f4f5dc");
+    const eyeSize = this.r * 0.38;
+    fill("#f5fff7");
     circle(
       this.pos.x + cos(heading - 0.55) * eyeOffset,
       this.pos.y + sin(heading - 0.55) * eyeOffset,
@@ -68,6 +74,18 @@ class Snake extends Vehicle {
       this.pos.x + cos(heading + 0.55) * eyeOffset,
       this.pos.y + sin(heading + 0.55) * eyeOffset,
       eyeSize
+    );
+    fill("#11382c");
+    const pupilOffset = this.r * 0.09;
+    circle(
+      this.pos.x + cos(heading - 0.55) * eyeOffset + cos(heading) * pupilOffset,
+      this.pos.y + sin(heading - 0.55) * eyeOffset + sin(heading) * pupilOffset,
+      eyeSize * 0.43
+    );
+    circle(
+      this.pos.x + cos(heading + 0.55) * eyeOffset + cos(heading) * pupilOffset,
+      this.pos.y + sin(heading + 0.55) * eyeOffset + sin(heading) * pupilOffset,
+      eyeSize * 0.43
     );
   }
 }

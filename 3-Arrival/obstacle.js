@@ -6,9 +6,19 @@ class Obstacle extends Vehicle {
 
   show() {
     noStroke();
-    fill("#56634e");
+    fill(0, 0, 0, 52);
+    ellipse(this.pos.x + 2, this.pos.y + this.r * 0.72, this.r * 2.3, this.r * 1.05);
+    fill("#172e31");
+    circle(this.pos.x, this.pos.y, this.r * 2.15);
+    fill("#647e70");
     circle(this.pos.x, this.pos.y, this.r * 2);
-    fill("#718269");
-    circle(this.pos.x - this.r * 0.25, this.pos.y - this.r * 0.25, this.r * 0.65);
+    fill("#8ca28b");
+    circle(this.pos.x - this.r * 0.22, this.pos.y - this.r * 0.28, this.r * 0.78);
+    fill("#415d52");
+    circle(this.pos.x + this.r * 0.35, this.pos.y + this.r * 0.22, this.r * 0.44);
+    stroke(208, 239, 210, 130);
+    strokeWeight(1.5);
+    noFill();
+    arc(this.pos.x, this.pos.y, this.r * 1.65, this.r * 1.65, Math.PI * 1.05, Math.PI * 1.85);
   }
 }
