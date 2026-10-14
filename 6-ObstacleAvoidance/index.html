@@ -4,17 +4,74 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Sketch</title>
+    <title>Obstacle avoidance · Steering lab</title>
 
     <link rel="stylesheet" type="text/css" href="style.css">
 
     <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
-    <script src="obstacle.js"></script>
     <script src="vehicle.js"></script>
+    <script src="obstacle.js"></script>
+    <script src="seeker.js"></script>
     <script src="sketch.js"></script>
   </head>
   <body>
-    <!-- Pas besoin de déclarer un canvas pour dessiner en P5.js -->
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="Simulation controls">
+        <header class="brand">
+          <div class="brand-mark" aria-hidden="true">◈</div>
+          <div>
+            <p class="eyebrow">STEERING LAB <span>06</span></p>
+            <h1>Obstacle<br>avoidance</h1>
+          </div>
+        </header>
+
+        <p class="intro">Tune the swarm and watch each seeker find its way around the field.</p>
+
+        <section class="controls" aria-labelledby="controls-title">
+          <h2 id="controls-title">SIMULATION</h2>
+          <label class="control" for="speed-control">
+            <span class="control-heading"><span>Max speed</span><output id="speed-value">4.0</output></span>
+            <input id="speed-control" type="range" min="1" max="10" step="0.5" value="4">
+            <span class="range-hint"><span>Slow</span><span>Fast</span></span>
+          </label>
+
+          <label class="control" for="strength-control">
+            <span class="control-heading"><span>Max strength</span><output id="strength-value">0.20</output></span>
+            <input id="strength-control" type="range" min="0.05" max="1" step="0.05" value="0.2">
+            <span class="range-hint"><span>Gentle</span><span>Strong</span></span>
+          </label>
+
+          <label class="control" for="seeker-control">
+            <span class="control-heading"><span>Number of seekers</span><output id="seeker-value">3</output></span>
+            <input id="seeker-control" type="range" min="1" max="12" step="1" value="3">
+            <span class="range-hint"><span>1 agent</span><span>12 agents</span></span>
+          </label>
+
+          <label class="control" for="vision-control">
+            <span class="control-heading"><span>Max seeing distance</span><output id="vision-value">200 px</output></span>
+            <input id="vision-control" type="range" min="60" max="360" step="10" value="200">
+            <span class="range-hint"><span>Near</span><span>Far</span></span>
+          </label>
+        </section>
+
+        <div class="sidebar-footer">
+          <div class="status-dot"></div>
+          <span>LIVE SIMULATION</span>
+          <span class="footer-note">Drag a slider to tune</span>
+        </div>
+      </aside>
+
+      <section class="simulation" aria-label="Obstacle avoidance simulation">
+        <div class="simulation-header">
+          <div><span class="live-dot"></span> FIELD VIEW</div>
+          <p><span class="key-hint">CLICK</span> add obstacle <span class="separator">·</span> <span class="key-hint">D</span> debug view</p>
+        </div>
+        <div id="canvas-wrap" class="canvas-wrap"></div>
+        <div class="simulation-footer">
+          <span>Move your cursor to guide the seekers</span>
+          <span class="coordinate-label">P5.JS <span>•</span> 60 FPS TARGET</span>
+        </div>
+      </section>
+    </main>
   </body>
 </html>

@@ -1,69 +1,131 @@
-let pursuer1, pursuer2;
 let target;
 let obstacles = [];
 let vehicules = [];
+let canvasHost;
+let canvasObserver;
+
+const simulationSettings = {
+  maxSpeed: 4,
+  maxForce: 0.2,
+  seekerCount: 3,
+  maxSeeingDistance: 200
+};
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
-  pursuer1 = new Vehicle(100, 100);
-  pursuer2 = new Vehicle(random(width), random(height));
+  canvasHost = document.getElementById("canvas-wrap");
+  const canvas = createCanvas(canvasHost.clientWidth, canvasHost.clientHeight);
+  canvas.parent(canvasHost);
+  pixelDensity(1);
+  canvasObserver = new ResizeObserver(resizeCanvasToHost);
+  canvasObserver.observe(canvasHost);
+  resizeCanvasToHost();
 
-  vehicules.push(pursuer1);
-  //vehicules.push(pursuer2);
+  target = new Target(width / 2, height / 2);
+  target.r = 16;
 
-  // On cree un obstace au milieu de l'écran
-  // un cercle de rayon 100px
-  // TODO
-  obstacles.push(new Obstacle(width / 2, height / 2, 100, "green"));
+  obstacles.push(new Obstacle(width * 0.52, height * 0.5, 75));
+  syncSeekerCount();
+  setupControls();
 }
 
 function draw() {
-  // changer le dernier param (< 100) pour effets de trainée
-  background(0, 0, 0, 100);
+  background(10, 16, 29, 100);
 
-  target = createVector(mouseX, mouseY);
+  target.pos.set(constrain(mouseX, 0, width), constrain(mouseY, 0, height));
+  target.show();
 
-  // Dessin de la cible qui suit la souris
-  // Dessine un cercle de rayon 32px à la position de la souris
-  fill(255, 0, 0);
-  noStroke();
-  circle(target.x, target.y, 32);
+  obstacles.forEach(obstacle => obstacle.show());
 
-  // dessin des obstacles
-  // TODO
-  obstacles.forEach(o => {
-    o.show();
-  })
-
-  vehicules.forEach(v => {
-    // pursuer = le véhicule poursuiveur, il vise un point devant la cible
-    v.applyBehaviors(target, obstacles, vehicules);
-
-    // déplacement et dessin du véhicule et de la target
-    v.update();
-    v.show();
+  vehicules.forEach(vehicle => {
+    vehicle.applyBehaviors(target.pos, obstacles);
+    vehicle.update();
+    vehicle.show();
   });
 }
 
+function setupControls() {
+  bindSlider("speed-control", "speed-value", value => {
+    simulationSettings.maxSpeed = value;
+    applySettingsToSeekers();
+  }, value => value.toFixed(1));
+
+  bindSlider("strength-control", "strength-value", value => {
+    simulationSettings.maxForce = value;
+    applySettingsToSeekers();
+  }, value => value.toFixed(2));
+
+  bindSlider("seeker-control", "seeker-value", value => {
+    simulationSettings.seekerCount = value;
+    syncSeekerCount();
+  }, value => String(value));
+
+  bindSlider("vision-control", "vision-value", value => {
+    simulationSettings.maxSeeingDistance = value;
+    applySettingsToSeekers();
+  }, value => `${value} px`);
+}
+
+function bindSlider(inputId, outputId, onChange, formatValue) {
+  const input = document.getElementById(inputId);
+  const output = document.getElementById(outputId);
+  const update = () => {
+    const value = Number(input.value);
+    output.value = formatValue(value);
+    output.textContent = formatValue(value);
+    onChange(value);
+  };
+
+  input.addEventListener("input", update);
+  update();
+}
+
+function applySettingsToSeekers() {
+  vehicules.forEach(vehicle => {
+    vehicle.maxSpeed = simulationSettings.maxSpeed;
+    vehicle.maxForce = simulationSettings.maxForce;
+    vehicle.maxSeeingDistance = simulationSettings.maxSeeingDistance;
+  });
+}
+
+function syncSeekerCount() {
+  while (vehicules.length < simulationSettings.seekerCount) {
+    const seeker = new Seeker(random(width), random(height));
+    vehicules.push(seeker);
+  }
+
+  if (vehicules.length > simulationSettings.seekerCount) {
+    vehicules.splice(simulationSettings.seekerCount);
+  }
+
+  applySettingsToSeekers();
+}
+
 function mousePressed() {
-  // TODO : ajouter un obstacle de taille aléatoire à la position de la souris
-  obstacles.push(new Obstacle(mouseX, mouseY, random(20, 100), "green"));
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    obstacles.push(new Obstacle(mouseX, mouseY, random(20, 55)));
+  }
 }
 
 function keyPressed() {
-  if (key == "v") {
-    vehicules.push(new Vehicle(random(width), random(height)));
-  }
-  if (key == "d") {
+  if (document.activeElement instanceof HTMLInputElement) return;
+
+  if (key === "d" || key === "D") {
     Vehicle.debug = !Vehicle.debug;
-  } else if (key == "f") {
-    // on crée 10 véhicules à des position random espacées de 50px
-    // en x = 20, y = hauteur du  canvas sur deux
-    for (let i = 0; i < 10; i++) {
-      let v = new Vehicle(20, 300 )
-      // vitesse aléatoire
-      v.vel = new p5.Vector(random(1, 5), random(1, 5));
-      vehicules.push(v);
-    }
+  } else if (key === "v" || key === "V") {
+    const seekerControl = document.getElementById("seeker-control");
+    seekerControl.value = Math.min(Number(seekerControl.max), vehicules.length + 1);
+    seekerControl.dispatchEvent(new Event("input"));
+  }
+}
+
+function windowResized() {
+  resizeCanvasToHost();
+}
+
+function resizeCanvasToHost() {
+  if (!canvasHost.clientWidth || !canvasHost.clientHeight) return;
+
+  if (width !== canvasHost.clientWidth || height !== canvasHost.clientHeight) {
+    resizeCanvas(canvasHost.clientWidth, canvasHost.clientHeight);
   }
 }

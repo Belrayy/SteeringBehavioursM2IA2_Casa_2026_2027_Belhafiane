@@ -4,17 +4,55 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Sketch</title>
+    <title>Path Following Circuits</title>
 
     <link rel="stylesheet" type="text/css" href="style.css">
 
     <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
     <script src="path.js"></script>
     <script src="vehicle.js"></script>
+    <script src="car-renderer.js"></script>
+    <script src="path-following-vehicle.js"></script>
+    <script src="fast-vehicle.js"></script>
+    <script src="wander-vehicle.js"></script>
     <script src="sketch.js"></script>
   </head>
   <body>
-    <!-- Pas besoin de déclarer un canvas pour dessiner en P5.js -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <p class="eyebrow">STEERING BEHAVIORS</p>
+          <h1>Track lab</h1>
+        </div>
+      </div>
+
+      <div class="circuit-control">
+        <label for="circuit-select">Circuit</label>
+        <select id="circuit-select">
+          <option value="oval">Oval</option>
+          <option value="figure-eight">Figure eight</option>
+          <option value="clover">Clover</option>
+          <option value="rounded">Rounded square</option>
+          <option value="winding">Winding</option>
+        </select>
+      </div>
+
+      <div class="fleet">
+        <p class="section-label">ON TRACK</p>
+        <ul class="vehicle-counts" aria-label="Vehicle counts" aria-live="polite">
+          <li class="count-path"><span class="vehicle-dot" aria-hidden="true"></span><span class="count-label">Path</span><span class="count-value" id="path-count">0</span></li>
+          <li class="count-fast"><span class="vehicle-dot" aria-hidden="true"></span><span class="count-label">Fast</span><span class="count-value" id="fast-count">0</span></li>
+          <li class="count-wander"><span class="vehicle-dot" aria-hidden="true"></span><span class="count-label">Wander</span><span class="count-value" id="wander-count">0</span></li>
+        </ul>
+      </div>
+
+      <div class="help" aria-label="Controls">
+        <span class="help-item"><kbd>G</kbd> Wander car</span>
+        <span class="help-item"><kbd>S</kbd> Fast car</span>
+        <span class="help-item"><span class="mouse-icon" aria-hidden="true"></span>Drag to add</span>
+      </div>
+    </header>
+    <main id="canvas-container" aria-label="Vehicle track simulation"></main>
   </body>
 </html>

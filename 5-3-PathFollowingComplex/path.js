@@ -15,34 +15,32 @@ class Path {
 
   // Dessin du chemin
   display() {
-    // bords arrondis dans les irages
     strokeJoin(ROUND);
+    strokeCap(ROUND);
 
-    // couleur de la route = gris
-    stroke(175);
-    // On dessine le chemin deux fois plus large que la droite qui relie deux points
-    strokeWeight(this.radius * 2);
-    // pas de contours
-    noFill();
-
-    // dessin du chemin
-    beginShape();
-    for (let v of this.points) {
-      vertex(v.x, v.y);
-    }
-    endShape(CLOSE); // CLOSE signifie : on relie le dernier point au premier
-
-    // Draw thin line for center of path
-    // couleur noire fil de fer
-    stroke(0);
-    // épaisseur 1 pixel
-    strokeWeight(1);
+    stroke(30, 43, 57, 38);
+    strokeWeight(this.radius * 2 + 9);
     noFill();
     beginShape();
     for (let v of this.points) {
       vertex(v.x, v.y);
     }
-
     endShape(CLOSE);
+
+    stroke(48, 59, 72);
+    strokeWeight(this.radius * 2);
+    beginShape();
+    for (let v of this.points) {
+      vertex(v.x, v.y);
+    }
+    endShape(CLOSE);
+
+    stroke(218, 226, 231, 175);
+    strokeWeight(2);
+    for (let i = 0; i < this.points.length; i += 2) {
+      const start = this.points[i];
+      const end = this.points[(i + 1) % this.points.length];
+      line(start.x, start.y, end.x, end.y);
+    }
   }
 }

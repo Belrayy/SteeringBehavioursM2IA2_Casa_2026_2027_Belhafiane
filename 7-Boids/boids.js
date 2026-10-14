@@ -90,6 +90,9 @@ class Boid {
   avoid(obstacles) {
     // TODO
 
+    if (!obstacles || obstacles.length === 0) {
+      return createVector(0, 0);
+    }
 
     // il regarde par exemple 20 frames devant lui
     let ahead = this.vel.copy()

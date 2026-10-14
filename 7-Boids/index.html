@@ -2,19 +2,96 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Sketch</title>
-
-    <link rel="stylesheet" type="text/css" href="style.css">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101615" />
+    <title>Crosswalk — Steering Behaviours</title>
+    <link rel="stylesheet" href="style.css" />
     <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
     <script src="boids.js"></script>
     <script src="obstacle.js"></script>
+    <script src="collision.js"></script>
     <script src="sketch.js"></script>
   </head>
   <body>
-    <!-- Pas besoin de déclarer un canvas pour dessiner en P5.js -->
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="Crosswalk simulation home">
+        <span class="brand-mark" aria-hidden="true">↗</span>
+        <span>
+          <strong>crosswalk</strong>
+          <small>STEERING LAB · 01</small>
+        </span>
+      </a>
+
+      <section class="intro">
+        <p class="eyebrow">LIVE SIMULATION</p>
+        <h1>Urban<br /><em>motion.</em></h1>
+        <p class="intro-copy">A tiny city, a curious car, and a crowd finding its way.</p>
+      </section>
+
+      <section class="metrics" aria-label="Simulation statistics">
+        <div class="metric"><span>PEOPLE</span><strong id="people-count">0</strong></div>
+        <div class="metric"><span>CONTACTS</span><strong id="contact-count">0</strong></div>
+        <div class="metric"><span>STATUS</span><strong id="run-status">LIVE</strong></div>
+      </section>
+
+      <section class="control-section">
+        <div class="section-heading">
+          <h2>Population</h2>
+          <output id="population-value">90</output>
+        </div>
+        <input id="population" type="range" min="20" max="220" value="90" step="10" />
+        <p class="hint">How busy is the street?</p>
+      </section>
+
+      <section class="control-section">
+        <div class="section-heading"><h2>Car pace</h2><output id="pace-value">6</output></div>
+        <input id="pace" type="range" min="2" max="10" value="6" step="1" />
+        <p class="hint">The car follows the nearest person.</p>
+      </section>
+
+      <section class="control-section">
+        <div class="section-heading"><h2>Flock behavior</h2><span class="tag">BOIDS</span></div>
+        <label class="slider-row" for="separation">
+          <span>Personal space</span><output id="separation-value">3.0</output>
+        </label>
+        <input id="separation" type="range" min="0" max="10" value="3" step="0.5" />
+        <label class="slider-row second" for="cohesion">
+          <span>Group instinct</span><output id="cohesion-value">1.0</output>
+        </label>
+        <input id="cohesion" type="range" min="0" max="4" value="1" step="0.2" />
+      </section>
+
+      <section class="control-section debug-section">
+        <div class="section-heading">
+          <div><h2>Debug overlay</h2><p class="hint">Perception + steering vectors</p></div>
+          <label class="switch" aria-label="Toggle debug overlay">
+            <input id="debug-toggle" type="checkbox" />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="key-hint"><kbd>D</kbd><span>Toggle diagnostics</span></div>
+      </section>
+
+      <div class="actions">
+        <button id="pause-button" class="button button-primary" type="button"><span>Ⅱ</span> Pause scene</button>
+        <button id="add-person-button" class="button button-quiet" type="button"><span>＋</span> Add a person</button>
+        <button id="reset-button" class="reset-button" type="button">Reset simulation <span>↺</span></button>
+      </div>
+
+      <footer><span class="live-dot"></span> p5.js · flocking study <span class="footer-key">R reset</span></footer>
+    </aside>
+
+    <main class="stage" aria-label="Animated city simulation">
+      <div class="stage-top">
+        <span class="scene-label"><span class="live-dot"></span> CITY BLOCK <span class="separator">/</span> 06:42 PM</span>
+        <span class="stage-note">CLICK TO PLACE A ROAD OBSTRUCTION</span>
+      </div>
+      <div id="world"></div>
+      <div class="stage-bottom">
+        <span><i class="legend-car"></i> autonomous car</span>
+        <span><i class="legend-person"></i> pedestrian flock</span>
+        <span><i class="legend-obstacle"></i> road obstruction</span>
+      </div>
+    </main>
   </body>
 </html>

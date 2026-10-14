@@ -1,225 +1,379 @@
-// Flocking
-// Daniel Shiffman
-// https://thecodingtrain.com/CodingChallenges/124-flocking-boids.html
-// https://youtu.be/mhjuuHl6qHM
-
-// Equivalent du tableau de véhicules dans les autres exemples
 const flock = [];
-let fishImage;
-let requinImage;
-let obstacleSouris;
+const obstacles = [];
 
-let obstacles = [];
+let car;
+let contacts = 0;
+let isPaused = false;
+let carPace = 6;
+let chaseWeight = 2.8;
+let lastNearestPerson;
 
-let alignSlider, cohesionSlider, separationSlider;
-let labelNbBoids;
-
-let target;
-let requin;
-
-function preload() {
-  // On charge une image de poisson
-  fishImage = loadImage('assets/niceFishtransparent.png');
-  //requinImage = loadImage('assets/requin.png');
-  requinImage = loadImage('assets/SharkTransparent.png');
-
-  // Préchargement du son du requin quand il mange un poisson
-  soundFormats('mp3', 'ogg');
-  eatSound = loadSound('assets/eating.wav');
-  aie = loadSound('assets/aie.wav');
-  ouuu = loadSound('assets/ouuuu.ogg');
-}
+const ui = {};
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  const world = document.getElementById("world");
+  const renderer = createCanvas(world.clientWidth, world.clientHeight);
+  renderer.parent(world);
+  pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
 
-  // Quelques sliders pour régler les "poids" des trois comportements de flocking
-  // flocking en anglais c'est "se rassembler"
-  // rappel : tableauDesVehicules, min max val step posX posY propriété
-  const posYSliderDeDepart = 10;
-  creerUnSlider("Poids alignment", flock, 0, 2, 1.5, 0.1, 10, posYSliderDeDepart, "alignWeight");
-  creerUnSlider("Poids cohesion", flock, 0, 2, 1, 0.1, 10, posYSliderDeDepart+30, "cohesionWeight");
-  creerUnSlider("Poids séparation", flock, 0, 15, 3, 0.1, 10, posYSliderDeDepart+60,"separationWeight");
-  creerUnSlider("Poids boundaries", flock, 0, 15, 10, 1, 10, posYSliderDeDepart+90,"boundariesWeight");
-  
-  creerUnSlider("Rayon des boids", flock, 4, 40, 6, 1, 10, posYSliderDeDepart+120,"r");
-  creerUnSlider("Perception radius", flock, 15, 60, 25, 1, 10, posYSliderDeDepart+150,"perceptionRadius");
-
-  // On créer les "boids". Un boid en anglais signifie "un oiseau" ou "un poisson"
-  // Dans cet exemple c'est l'équivalent d'un véhicule dans les autres exemples
-  for (let i = 0; i < 200; i++) {
-    const b = new Boid(random(width), random(height), fishImage);
-    b.r = random(8, 40);
-    flock.push(b);
-  }
-
-  // Créer un label avec le nombre de boids présents à l'écran
-   labelNbBoids = createP("Nombre de boids : " + flock.length);
-  // couleur blanche
-  labelNbBoids.style('color', 'white');
-  labelNbBoids.position(10, posYSliderDeDepart+180);
-
-  // target qui suit la souris
-  target = createVector(mouseX, mouseY);
-  target.r = 50;
-
-  // requin prédateur
-  requin = new Boid(width/2, height/2, requinImage);
-  requin.r = 40;
-  requin.maxSpeed = 7;
-  requin.maxForce = 0.5;
-
-  // souris = obstacle
-  obstacleSouris = new Obstacle(mouseX, mouseY, 30, "lightgreen");
-  obstacles.push(obstacleSouris);
+  cacheControls();
+  bindControls();
+  resetSimulation();
 }
 
-function creerUnSlider(label, tabVehicules, min, max, val, step, posX, posY, propriete) {
-  let slider = createSlider(min, max, val, step);
-  
-  let labelP = createP(label);
-  labelP.position(posX, posY);
-  labelP.style('color', 'white');
-
-  slider.position(posX + 150, posY + 17);
-
-  let valueSpan = createSpan(slider.value());
-  valueSpan.position(posX + 300, posY+17);
-  valueSpan.style('color', 'white');
-  valueSpan.html(slider.value());
-
-  slider.input(() => {
-    valueSpan.html(slider.value());
-    tabVehicules.forEach(vehicle => {
-      vehicle[propriete] = slider.value();
-    });
+function cacheControls() {
+  [
+    "people-count", "contact-count", "run-status", "population", "population-value",
+    "pace", "pace-value", "separation", "separation-value", "cohesion",
+    "cohesion-value", "debug-toggle", "pause-button", "add-person-button", "reset-button"
+  ].forEach((id) => {
+    ui[id] = document.getElementById(id);
   });
 
-  return slider;
+  document.querySelectorAll('input[type="range"]').forEach(setRangeProgress);
+}
+
+function bindControls() {
+  ui.population.addEventListener("input", () => {
+    setRangeProgress(ui.population);
+    const count = Number(ui.population.value);
+    document.getElementById("population-value").value = count;
+    document.getElementById("population-value").textContent = count;
+    resizePopulation(count);
+  });
+
+  ui.pace.addEventListener("input", () => {
+    setRangeProgress(ui.pace);
+    carPace = Number(ui.pace.value);
+    document.getElementById("pace-value").value = carPace;
+    document.getElementById("pace-value").textContent = carPace;
+    car.maxSpeed = carPace;
+  });
+
+  ui.separation.addEventListener("input", () => {
+    setRangeProgress(ui.separation);
+    const value = Number(ui.separation.value);
+    document.getElementById("separation-value").value = value.toFixed(1);
+    document.getElementById("separation-value").textContent = value.toFixed(1);
+    flock.forEach((person) => person.separationWeight = value);
+  });
+
+  ui.cohesion.addEventListener("input", () => {
+    setRangeProgress(ui.cohesion);
+    const value = Number(ui.cohesion.value);
+    document.getElementById("cohesion-value").value = value.toFixed(1);
+    document.getElementById("cohesion-value").textContent = value.toFixed(1);
+    flock.forEach((person) => person.cohesionWeight = value);
+  });
+
+  ui["debug-toggle"].addEventListener("change", () => {
+    Boid.debug = ui["debug-toggle"].checked;
+  });
+  ui["pause-button"].addEventListener("click", togglePause);
+  ui["add-person-button"].addEventListener("click", () => addPerson(width / 2, height / 2));
+  ui["reset-button"].addEventListener("click", resetSimulation);
+}
+
+function setRangeProgress(input) {
+  const range = Number(input.max) - Number(input.min);
+  const progress = range === 0 ? 0 : ((Number(input.value) - Number(input.min)) / range) * 100;
+  input.style.setProperty("--range-progress", `${progress}%`);
+}
+
+function resetSimulation() {
+  flock.length = 0;
+  obstacles.length = 0;
+  contacts = 0;
+  isPaused = false;
+  Boid.debug = ui["debug-toggle"].checked;
+  car = new Boid(width / 2, height / 2);
+  car.r = 24;
+  car.maxSpeed = carPace;
+  car.maxForce = 0.18;
+  car.distanceCercle = 100;
+  car.wanderRadius = 34;
+
+  const count = Number(ui.population.value);
+  for (let i = 0; i < count; i++) {
+    flock.push(createPerson(random(width), random(height)));
+  }
+  updateMetrics();
+  updatePauseButton();
+}
+
+function createPerson(x, y) {
+  const person = new Boid(x, y);
+  person.r = random(10, 14);
+  person.maxSpeed = random(2.3, 3.6);
+  person.maxForce = 0.16;
+  person.separationWeight = Number(ui.separation.value);
+  person.cohesionWeight = Number(ui.cohesion.value);
+  person.alignWeight = 1.1;
+  person.boundariesWeight = 8;
+  person.boundariesDistance = 38;
+  person.avoidWeight = 8;
+  person.personColor = random(["#f7b267", "#7bd8c6", "#b9a4ff", "#f28b82", "#e9d98f"]);
+  return person;
+}
+
+function resizePopulation(count) {
+  while (flock.length > count) flock.pop();
+  while (flock.length < count) {
+    flock.push(createPerson(random(width), random(height)));
+  }
+  updateMetrics();
+}
+
+function addPerson(x, y) {
+  if (flock.length >= Number(ui.population.max)) return;
+
+  flock.push(createPerson(x, y));
+  ui.population.value = flock.length;
+  document.getElementById("population-value").value = flock.length;
+  document.getElementById("population-value").textContent = ui.population.value;
+  updateMetrics();
+}
+
+function updateMetrics() {
+  ui["people-count"].textContent = flock.length;
+  ui["contact-count"].textContent = String(contacts).padStart(2, "0");
+  ui["run-status"].textContent = isPaused ? "PAUSED" : "LIVE";
+  ui["add-person-button"].disabled = flock.length >= Number(ui.population.max);
+}
+
+function togglePause() {
+  isPaused = !isPaused;
+  updatePauseButton();
+  updateMetrics();
+}
+
+function updatePauseButton() {
+  ui["pause-button"].innerHTML = isPaused
+    ? "<span>▶</span> Resume scene"
+    : "<span>Ⅱ</span> Pause scene";
 }
 
 function draw() {
-  background(0);
-  // une image de fond
-  //imageMode(CORNER);
-  //image(requinImage, 0, 0, width, height);
+  drawCityBackdrop();
 
-  // dessin des obstacles
-  obstacles.forEach(obstacle => {
-    obstacle.show();
-  });
-
-    // mettre à jour le nombre de boids
-    labelNbBoids.html("Nombre de boids : " + flock.length);
-
-    // on dessine la cible qui suit la souris
-    target.x = mouseX;
-    target.y = mouseY;
-
-    push();
-    fill("lightgreen");
-    noStroke();
-    ellipse(target.x, target.y, target.r, target.r);
-     pop();
-
-  for (let boid of flock) {
-    // équivalent de applyBehaviors, cohesion + separation + alignenement + confinement
-    boid.flock(flock, obstacles);
-
-    boid.fleeWithTargetRadius(requin);
-
-    // on tester le comportement fleeWithTargetRadius sur tous les obstacles
-    
-    boid.fleeWithTargetRadius(obstacles[0]);
-
-    boid.update();
-    boid.show();
-  }  
-
-  // REQUIN
-  let wanderForce = requin.wander();
-  wanderForce.mult(1);
-  requin.applyForce(wanderForce);
-
-  // calcul du poisson le plus proche du requin
-  let seekForce;
-  let rayonDeDetection = 70;
-  // dessin du cercle en fil de fer jaune
-  noFill();
-  stroke("yellow");
-  ellipse(requin.pos.x, requin.pos.y, rayonDeDetection*2, rayonDeDetection*2);
-
-  let closest = requin.getVehiculeLePlusProche(flock);
-
-  if (closest) {
-    // distance entre le requin et le poisson le plus proche
-    let d = p5.Vector.dist(requin.pos, closest.pos);
-    if(d < rayonDeDetection) {
-      // on fonce vers le poisson !!!
-      // SI LE SON N'EST PAS EN TRAIN DE JOUER ALORS ON JOUE LE SON DU REQUIN QUI FONCE VERS LE POISSON
-      if(!ouuu.isPlaying()) {
-        ouuu.play();
-      }
-
-      seekForce = requin.seek(closest.pos);
-      seekForce.mult(7);
-      requin.applyForce(seekForce);
-    }
-    if (d < 5) {
-      // on mange !!!!
-      // on retire le poisson du tableau flock
-      let index = flock.indexOf(closest);
-      flock.splice(index, 1);
-      // Le requin grossit en augmentant sa taille
-      requin.r += 1;
-      // On joue le son du requin qui mange
-      eatSound.play();
-      aie.play();
-
-    }
+  if (!isPaused) {
+    updatePeople();
+    updateCar();
+    resolveContacts();
   }
-  requin.edges();
-  requin.update();
-  requin.show();
 
-  // souris = obstacle
-  obstacleSouris.pos.x = mouseX;
-  obstacleSouris.pos.y = mouseY;
+  obstacles.forEach((obstacle) => obstacle.show());
+  flock.forEach(drawPerson);
+  drawCar();
 
-  // On dessine tous les obstacles
-  obstacles.forEach(obstacle => {
-    obstacle.show();
-  });
-
-  //
+  if (Boid.debug) drawDebugOverlay();
 }
 
-function mouseDragged() {
-  const b = new Boid(mouseX, mouseY, fishImage);
-  
-  b.r = random(8, 40);
+function drawCityBackdrop() {
+  background("#121a18");
+  noStroke();
 
-  flock.push(b);
+  for (let x = 16; x < width; x += 44) {
+    for (let y = 18; y < height; y += 44) {
+      fill(178, 205, 177, 11);
+      circle(x, y, 1.5);
+    }
+  }
 
+  const roadY = height * 0.73;
+  fill("#1a2321");
+  rect(0, roadY - 72, width, 144);
+  fill("#27312e");
+  rect(0, roadY - 76, width, 5);
+  rect(0, roadY + 71, width, 5);
 
+  stroke(225, 213, 175, 36);
+  strokeWeight(2);
+  drawingContext.setLineDash([18, 17]);
+  line(0, roadY, width, roadY);
+  drawingContext.setLineDash([]);
+  noStroke();
+
+  const crossingX = width * 0.7;
+  fill(230, 227, 204, 25);
+  for (let y = roadY - 57; y < roadY + 56; y += 18) {
+    rect(crossingX, y, 32, 9, 2);
+  }
+
+  fill(255, 255, 255, 28);
+  textSize(10);
+  textStyle(BOLD);
+  text("W  18TH STREET", 25, height - 24);
+  textStyle(NORMAL);
+}
+
+function updatePeople() {
+  for (const person of flock) {
+    person.flock(flock, obstacles);
+
+    if (p5.Vector.dist(person.pos, car.pos) < 170) {
+      const escapeForce = person.flee(car.pos);
+      escapeForce.mult(2.2);
+      person.applyForce(escapeForce);
+    }
+
+    person.update();
+    person.edges();
+  }
+}
+
+function updateCar() {
+  const wanderForce = car.wander();
+  wanderForce.mult(0.24);
+  car.applyForce(wanderForce);
+
+  lastNearestPerson = car.getVehiculeLePlusProche(flock);
+  if (lastNearestPerson) {
+    const chaseForce = car.seek(lastNearestPerson.pos);
+    chaseForce.mult(chaseWeight);
+    car.applyForce(chaseForce);
+  }
+
+  car.applyForce(car.avoid(obstacles));
+  car.update();
+  car.edges();
+}
+
+function resolveContacts() {
+  for (let i = flock.length - 1; i >= 0; i--) {
+    const person = flock[i];
+    const distance = p5.Vector.dist(car.pos, person.pos);
+    if (!circlesOverlap(distance, car.r * 0.72, person.r * 0.72)) continue;
+
+    contacts++;
+    flock.splice(i, 1);
+    const respawn = spawnPointAtEdge();
+    flock.push(createPerson(respawn.x, respawn.y));
+    updateMetrics();
+  }
+}
+
+function spawnPointAtEdge() {
+  const edge = floor(random(4));
+  if (edge === 0) return createVector(random(width), 0);
+  if (edge === 1) return createVector(width, random(height));
+  if (edge === 2) return createVector(random(width), height);
+  return createVector(0, random(height));
+}
+
+function drawPerson(person) {
+  const heading = person.vel.heading() + HALF_PI;
+  push();
+  translate(person.pos.x, person.pos.y);
+  rotate(heading);
+  noStroke();
+
+  fill(0, 0, 0, 65);
+  ellipse(1, 7, person.r * 1.45, person.r * 0.65);
+
+  stroke("#d8d4c5");
+  strokeWeight(2.3);
+  line(-2, 3, -4, 7);
+  line(2, 3, 4, 7);
+  stroke(person.personColor);
+  strokeWeight(2.5);
+  line(-3, -1, -5, 2);
+  line(3, -1, 5, 2);
+
+  noStroke();
+  fill(person.personColor);
+  ellipse(0, 0, person.r * 0.92, person.r * 1.1);
+  fill("#f1c8a5");
+  circle(0, -person.r * 0.78, person.r * 0.64);
+  fill("#282c29");
+  arc(0, -person.r * 0.87, person.r * 0.7, person.r * 0.44, PI, TWO_PI);
+  pop();
+}
+
+function drawCar() {
+  if (!car) return;
+  push();
+  translate(car.pos.x, car.pos.y);
+  rotate(car.vel.heading());
+  noStroke();
+
+  fill(0, 0, 0, 70);
+  ellipse(-1, 5, 58, 34);
+  fill("#111514");
+  rect(-17, -17, 11, 7, 2);
+  rect(10, -17, 11, 7, 2);
+  rect(-17, 10, 11, 7, 2);
+  rect(10, 10, 11, 7, 2);
+
+  fill("#e76f51");
+  rect(-25, -13, 50, 26, 9);
+  fill("#f49a71");
+  rect(-11, -10, 23, 20, 6);
+  fill("#253b39");
+  quad(-9, -9, 3, -9, 9, -5, 9, 5);
+  quad(-9, 9, 3, 9, 9, 5, 9, -5);
+  fill("#fff0bd");
+  rect(20, -9, 4, 5, 2);
+  rect(20, 4, 4, 5, 2);
+  fill("#9b4039");
+  rect(-24, -9, 3, 5, 1);
+  rect(-24, 4, 3, 5, 1);
+  pop();
+}
+
+function drawDebugOverlay() {
+  if (lastNearestPerson) {
+    noFill();
+    stroke("#f7b267");
+    strokeWeight(1);
+    circle(car.pos.x, car.pos.y, 170);
+    line(car.pos.x, car.pos.y, lastNearestPerson.pos.x, lastNearestPerson.pos.y);
+    noStroke();
+    fill("#f7b267");
+    circle(lastNearestPerson.pos.x, lastNearestPerson.pos.y, 5);
+  }
+  fill(216, 227, 210, 190);
+  noStroke();
+  textSize(11);
+  text(`car speed  ${car.vel.mag().toFixed(1)}   ·   people  ${flock.length}   ·   contacts  ${contacts}`, 20, 28);
 }
 
 function mousePressed() {
-  // TODO : ajouter un obstacle de taille aléatoire à la position de la souris
-  obstacles.push(new Obstacle(mouseX, mouseY, random(20, 100), "green"));
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    obstacles.push(new Obstacle(mouseX, mouseY, random(16, 25), "#d99b62"));
+  }
+}
+
+function mouseDragged() {
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height && frameCount % 5 === 0) {
+    addPerson(mouseX, mouseY);
+  }
 }
 
 function keyPressed() {
- if (key === 'd') {
+  const activeTag = document.activeElement?.tagName;
+  if (activeTag === "INPUT" || activeTag === "BUTTON") return;
+
+  if (key.toLowerCase() === "d") {
     Boid.debug = !Boid.debug;
-  } else if (key === 'r') {
-    // On donne une taille différente à chaque boid
-    flock.forEach(b => {
-      b.r = random(8, 40);
-    });
-  } else if( key === 'o') {
-    // ajouter un obstacle à la position de la souris
-    let o = new Obstacle(mouseX, mouseY, random(20, 60), "lightgreen");
-    obstacles.push(o);
+    ui["debug-toggle"].checked = Boid.debug;
+  } else if (key.toLowerCase() === "r") {
+    resetSimulation();
+  } else if (key === " ") {
+    togglePause();
+    return false;
   }
+}
+
+function windowResized() {
+  const world = document.getElementById("world");
+  resizeCanvas(world.clientWidth, world.clientHeight);
+  if (car) {
+    car.boundariesWidth = width;
+    car.boundariesHeight = height;
+  }
+  flock.forEach((person) => {
+    person.boundariesWidth = width;
+    person.boundariesHeight = height;
+  });
 }
