@@ -19,6 +19,12 @@ let selectedCircuit;
 
 // Tableau des véhicules
 let vehicles = [];
+let snakes = [];
+let snakeFollowWeight = 2;
+let snakeSeparationWeight = 1.2;
+let circuitWidth = 20;
+let snakeSpacing = 20;
+let snakeSize = 22;
 
 function setup() {
   const canvasContainer = document.getElementById("canvas-container");
@@ -43,12 +49,14 @@ function draw() {
   // Affichage du chemin
   path.display();
 
+  const allSegments = snakes.flatMap(snake => snake.anneaux);
+  const neighbors = [...vehicles, ...allSegments];
   for (let v of vehicles) {
     // On applique les comportements pour suivre le chemin
     // Comme on utilise ici plusieurs comportements, notamment un comportement qui 
     // dépend des autres véhicules, on passe en paramètre le tableau des véhicules 
     // et le chemin
-    v.applyBehaviors(vehicles, path);
+    v.applyBehaviors(neighbors, path);
     // on a regroupé update, draw etc. dans une méthode run (update, borders, display, etc.)
     v.run();
   }
