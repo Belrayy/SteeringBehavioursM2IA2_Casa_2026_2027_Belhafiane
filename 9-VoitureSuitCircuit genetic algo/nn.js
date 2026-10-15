@@ -88,7 +88,6 @@ class NeuralNetwork {
 
         // On récupère les valeurs de la sortie
         const outputs = ys.dataSync();
-        console.log(outputs);
         return outputs;
       });
     }
