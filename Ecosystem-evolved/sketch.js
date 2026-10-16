@@ -11,6 +11,11 @@ const sim = {
   debug: false,
   deaths: 0,
   births: 0,
+  animalDeaths: 0,
+  plantRemovals: 0,
+  wolfBirths: 0,
+  sheepBirths: 0,
+  plantSpawns: 0,
   plantSpawnAccumulator: 0,
   tickAccumulator: 0,
   statsClock: 0,
@@ -44,6 +49,8 @@ function initControls() {
       <button id="startPauseBtn" type="button">Pause</button>
       <button id="resetBtn" type="button">Reset</button>
     </div>
+    <button id="reportBtn" class="report-button" type="button">Download PDF report</button>
+    <p id="reportStatus" class="report-status" role="status" aria-live="polite"></p>
     <div class="control-group">
       <div class="label-row">
         <label>Plant spawn rate</label>
@@ -88,6 +95,8 @@ function initControls() {
 
   ui.startPauseBtn = select('#startPauseBtn');
   ui.resetBtn = select('#resetBtn');
+  ui.reportBtn = select('#reportBtn');
+  ui.reportStatus = select('#reportStatus');
   ui.plantSpawnSlider = select('#plantSpawnSlider');
   ui.initialPlantsSlider = select('#initialPlantsSlider');
   ui.initialWolvesSlider = select('#initialWolvesSlider');
@@ -101,6 +110,7 @@ function initControls() {
 
   ui.startPauseBtn.mousePressed(toggleSimulation);
   ui.resetBtn.mousePressed(resetSimulation);
+  ui.reportBtn.mousePressed(downloadEcosystemReport);
   ui.plantSpawnSlider.input(() => {
     settings.plantSpawnRate = Number(ui.plantSpawnSlider.value());
     ui.plantSpawnValue.html(`${settings.plantSpawnRate.toFixed(2)} plants/s`);
@@ -140,6 +150,11 @@ function resetSimulation() {
   sim.time = 0;
   sim.deaths = 0;
   sim.births = 0;
+  sim.animalDeaths = 0;
+  sim.plantRemovals = 0;
+  sim.wolfBirths = 0;
+  sim.sheepBirths = 0;
+  sim.plantSpawns = 0;
   sim.plantSpawnAccumulator = 0;
   sim.tickAccumulator = 0;
   sim.statsClock = 0;
@@ -201,6 +216,7 @@ function spawnPlantsByRate(dt) {
       const oldest = sim.plants.reduce((current, plant) => plant.age > current.age ? plant : current);
       sim.plants.splice(sim.plants.indexOf(oldest), 1);
       sim.deaths += 1;
+      sim.plantRemovals += 1;
     }
     const toxicity = EcosystemRules.sampleToxicityFromAverage(
       EcosystemRules.averageToxicity(sim.plants),
@@ -208,6 +224,7 @@ function spawnPlantsByRate(dt) {
     );
     sim.plants.push(new Plant(random(width * 0.08, width * 0.92), random(height * 0.18, height * 0.92), toxicity));
     sim.births += 1;
+    sim.plantSpawns += 1;
   }
 }
 
@@ -218,6 +235,7 @@ function updateWolves(dt) {
     if (wolf.isDead()) {
       sim.wolves.splice(i, 1);
       sim.deaths += 1;
+      sim.animalDeaths += 1;
     }
   }
 }
@@ -229,6 +247,7 @@ function updateSheep(dt) {
     if (sheep.isDead()) {
       sim.sheep.splice(i, 1);
       sim.deaths += 1;
+      sim.animalDeaths += 1;
     }
   }
 }
@@ -240,6 +259,7 @@ function updatePlants(dt) {
     if (plant.isDead()) {
       sim.plants.splice(i, 1);
       sim.deaths += 1;
+      sim.plantRemovals += 1;
     }
   }
 }
@@ -280,6 +300,25 @@ function renderHud() {
       <div><span class="stat-label">Avg sheep resistance</span><strong>${avgResistance}</strong></div>
     </div>
   `);
+}
+
+function downloadEcosystemReport() {
+  try {
+    const report = EcosystemReport.createReport(sim, settings);
+    const pdf = EcosystemReport.createPdf(report);
+    const url = URL.createObjectURL(pdf);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ecosystem-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    ui.reportStatus.html('PDF report generated. Check your downloads if it did not save automatically.');
+  } catch (error) {
+    console.error('Could not generate the ecosystem PDF report.', error);
+    ui.reportStatus.html('The PDF report could not be generated. Check the browser console for details.');
+  }
 }
 
 function clamp(value, minValue, maxValue) {
@@ -393,6 +432,7 @@ class Wolf extends LivingEntity {
         if (index >= 0) {
           sheepList.splice(index, 1);
           sim.deaths += 1;
+          sim.animalDeaths += 1;
           this.reproduceAfterFeeding();
         }
       }
@@ -414,6 +454,7 @@ class Wolf extends LivingEntity {
     ));
     this.lastBirthAt = sim.time;
     sim.births += 1;
+    sim.wolfBirths += 1;
   }
 
 }
@@ -512,6 +553,7 @@ class Sheep extends LivingEntity {
         plant.health = 0;
         plantList.splice(i, 1);
         sim.deaths += 1;
+        sim.plantRemovals += 1;
         if (this.health > 0) this.reproduceAfterFeeding();
       }
     }
@@ -532,6 +574,7 @@ class Sheep extends LivingEntity {
     ));
     this.lastBirthAt = sim.time;
     sim.births += 1;
+    sim.sheepBirths += 1;
   }
 
 }

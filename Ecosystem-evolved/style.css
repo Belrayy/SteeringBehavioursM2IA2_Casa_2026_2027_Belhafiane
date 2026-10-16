@@ -66,6 +66,20 @@ button:hover {
   filter: brightness(1.05);
 }
 
+.report-button {
+  width: 100%;
+  margin-bottom: 2px;
+  background: linear-gradient(135deg, #c8e7ff, #6aaddd);
+}
+
+.report-status {
+  min-height: 1em;
+  margin: 4px 0 8px;
+  color: #cdeed6;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .control-group {
   margin-bottom: 10px;
 }

@@ -6,6 +6,7 @@ This is a standalone p5.js ecosystem simulation using the bundled local librarie
 
 - **Start / Pause** toggles simulation time.
 - **Reset** applies the selected initial plant, wolf, and sheep counts.
+- **Download PDF report** saves a plain-language, two-page snapshot of the current populations, births and removals, plant toxicity, health, ages, sheep resistance, simulation settings, and ecosystem rules. It works while running or paused; it does not include a historical timeline.
 - **Plant spawn rate** sets autonomous plant arrivals per simulated second (0-2). It works while the ecosystem runs. At the 300-plant performance limit, each new plant replaces the oldest one.
 - **Debug overlay** (or `D`) shows wolf and sheep perception radii; debug health bars are also visible.
 
@@ -18,6 +19,7 @@ This is a standalone p5.js ecosystem simulation using the bundled local librarie
 - Plant arrivals sample the field's average toxicity, with small mutations preserving diversity. With at least 40% of plants toxic, sheep resistance rises gradually and is inherited with small bounded mutations.
 - Defaults are 60 plants, 5 wolves, and 32 sheep; wolf reproduction is capped at 12 to preserve a prey population for observing evolution.
 - Sheep and wolves inherit their behavioral traits with bounded mutations. Their 3D models grow with age.
+- The report separates animal births from plant spawns and animal deaths from plant removals so combined totals are easier to interpret.
 
 ## Tests
 
