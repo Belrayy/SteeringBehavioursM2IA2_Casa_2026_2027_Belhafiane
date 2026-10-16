@@ -88,7 +88,7 @@ function initControls() {
       <div class="legend-item"><span class="dot safe"></span>Safe: heals sheep</div>
       <div class="legend-item"><span class="dot poisonous"></span>Poisonous: 1.4 HP damage before resistance</div>
       <div class="legend-item"><span class="dot lethal"></span>Lethal: 3.2 HP; only highly resistant sheep eat it</div>
-      <p class="rule-note">No passive HP drain: animals grow with age. Eating can restore HP or cause toxicity damage. When over 40% of plants are toxic, sheep develop resistance and pass it down with small mutations. New plants track the field's average toxicity. At 300 plants, new spawns replace the oldest.</p>
+      <p class="rule-note">No passive HP drain: animals grow with age. Eating can restore HP or cause toxicity damage. Plants that remain uneaten reduce toxicity by one level every 30 seconds, becoming safe after enough time. When over 40% of plants are toxic, sheep develop resistance and pass it down with small mutations. New plants track the field's average toxicity. At 300 plants, new spawns replace the oldest.</p>
     </div>
     <div id="statsPanel" class="stats-panel"></div>
   `);
@@ -357,25 +357,16 @@ class LivingEntity extends Vehicle {
 
   move() {
     const health = this.health;
+    const originalMaxForce = this.maxForce;
+    const nearBoundary = this.pos.x < 70
+      || this.pos.x > width - 70
+      || this.pos.y < 70
+      || this.pos.y > height - 70;
+    if (nearBoundary) this.maxForce = Math.max(originalMaxForce, 0.6);
+    this.boundaries();
+    this.maxForce = originalMaxForce;
     super.update();
     this.health = health;
-    const margin = 18;
-    if (this.pos.x < margin) {
-      this.vel.x += 0.12;
-      this.pos.x = margin;
-    }
-    if (this.pos.x > width - margin) {
-      this.vel.x -= 0.12;
-      this.pos.x = width - margin;
-    }
-    if (this.pos.y < margin) {
-      this.vel.y += 0.12;
-      this.pos.y = margin;
-    }
-    if (this.pos.y > height - margin) {
-      this.vel.y -= 0.12;
-      this.pos.y = height - margin;
-    }
   }
 }
 
@@ -486,6 +477,7 @@ class Sheep extends LivingEntity {
     };
     this.detectionRadius = this.gene.threatRadius;
     this.lastBirthAt = -Infinity;
+    this.wanderHeading = this.vel.heading();
     this.health = this.maxHealth;
   }
 
@@ -537,6 +529,18 @@ class Sheep extends LivingEntity {
         const steer = p5.Vector.sub(desired, this.vel);
         steer.limit(this.maxForce * 1.7);
         this.applyForce(steer);
+      } else {
+        this.wanderHeading = SheepSteering.updateWanderHeading(
+          this.wanderHeading,
+          random(-0.08, 0.08)
+        );
+        const wanderForce = SheepSteering.wanderForce(
+          this.vel,
+          this.wanderHeading,
+          this.maxSpeed * this.gene.speed,
+          this.maxForce * 0.7
+        );
+        this.applyForce(createVector(wanderForce.x, wanderForce.y));
       }
     }
 
@@ -590,6 +594,7 @@ class Plant extends LivingEntity {
     this.toxicity = inheritedToxicity == null
       ? randomChoice([TOXICITY.SAFE, TOXICITY.SAFE, TOXICITY.POISONOUS, TOXICITY.LETHAL])
       : clamp(Math.round(inheritedToxicity), 0, 2);
+    this.initialToxicity = this.toxicity;
     this.growthBias = random(-0.2, 0.25);
     this.vel.set(0, 0);
     this.health = this.maxHealth;
@@ -598,6 +603,11 @@ class Plant extends LivingEntity {
   update(dt, plantList) {
     this.age += dt;
     this.size = clamp(1 + this.age * 0.06, 1, 2);
+    this.toxicity = EcosystemRules.toxicityAfterAging(
+      this.initialToxicity,
+      this.age,
+      EcosystemRules.PLANT_DETOXIFY_INTERVAL
+    );
     this.move();
   }
 

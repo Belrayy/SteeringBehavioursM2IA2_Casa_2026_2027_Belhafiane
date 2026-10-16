@@ -353,6 +353,7 @@ const EcosystemReport = (() => {
       'Wolves hunt sheep. A successful hunt restores wolf health. Wolves can reproduce after age 10 seconds, with a 16-second cooldown and a population cap of 12.',
       'Sheep eat safe plants to restore health. Sheep can reproduce after age 1.5 seconds, with a 1-second cooldown and a population cap of 180.',
       'Poisonous plants deal up to 1.4 HP damage; lethal plants deal up to 3.2 HP damage before resistance.',
+      'Plants that remain uneaten lose one toxicity level every 30 simulated seconds: lethal becomes poisonous, then safe.',
       'Sheep below 75% resistance avoid lethal plants. No species loses health passively; animals grow with age.',
       'Plants grow until eaten or replaced. New plant toxicity follows the current field average, with small mutations.',
       'Birth and removal totals are cumulative since the last reset. Plant removals include eaten plants and replacements, not just deaths.',

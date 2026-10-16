@@ -2,6 +2,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const rules = require('../ecosystemRules.js');
 
+test('uneaten plant toxicity falls by one level per full aging interval', () => {
+  const interval = rules.PLANT_DETOXIFY_INTERVAL;
+  assert.equal(interval, 30);
+  assert.equal(rules.toxicityAfterAging(2, interval - 0.01), 2);
+  assert.equal(rules.toxicityAfterAging(2, interval), 1);
+  assert.equal(rules.toxicityAfterAging(2, interval * 2 - 0.01), 1);
+  assert.equal(rules.toxicityAfterAging(2, interval * 2), 0);
+  assert.equal(rules.toxicityAfterAging(1, interval), 0);
+  assert.equal(rules.toxicityAfterAging(0, interval * 3), 0);
+  assert.equal(rules.toxicityAfterAging(2, -1), 2);
+});
+
 test('new plant toxicity is sampled around the field average', () => {
   assert.equal(rules.averageToxicity([{ toxicity: 0 }, { toxicity: 1 }, { toxicity: 2 }]), 1);
   assert.equal(rules.sampleToxicityFromAverage(0.25, () => 0.2, 0), 1);

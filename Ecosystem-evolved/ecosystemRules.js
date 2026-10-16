@@ -1,5 +1,13 @@
 const EcosystemRules = (() => {
+  const PLANT_DETOXIFY_INTERVAL = 30;
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  function toxicityAfterAging(initialToxicity, age, secondsPerLevel = PLANT_DETOXIFY_INTERVAL) {
+    const startingLevel = clamp(Math.round(initialToxicity), 0, 2);
+    const interval = Math.max(Number.EPSILON, secondsPerLevel);
+    const elapsedLevels = Math.floor(Math.max(0, age) / interval);
+    return Math.max(0, startingLevel - elapsedLevels);
+  }
 
   function averageToxicity(plants) {
     if (plants.length === 0) return 0;
@@ -44,6 +52,8 @@ const EcosystemRules = (() => {
   }
 
   return Object.freeze({
+    PLANT_DETOXIFY_INTERVAL,
+    toxicityAfterAging,
     averageToxicity,
     toxicPlantFraction,
     sampleToxicityFromAverage,
