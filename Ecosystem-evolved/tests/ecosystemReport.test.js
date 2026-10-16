@@ -14,11 +14,11 @@ function makeSimulation() {
     animalDeaths: 4,
     plantRemovals: 3,
     wolves: [
-      { age: 30, health: 2.4, gene: { pursuit: 1, vision: 120, chaseBias: 1.1 } },
+      { age: 30, health: 2.4, energy: 65, gene: { pursuit: 1, vision: 120, stamina: 1.1 } },
     ],
     sheep: [
-      { age: 20, health: 3, gene: { threatRadius: 125, foodRadius: 110, avoidToxicity: 1, speed: 1, toxinResistance: 0.6 } },
-      { age: 22, health: 4, gene: { threatRadius: 130, foodRadius: 120, avoidToxicity: 0.9, speed: 1.1, toxinResistance: 0.8 } },
+      { age: 20, health: 3, energy: 60, gene: { threatRadius: 125, foodRadius: 110, avoidToxicity: 1, speed: 1, toxinResistance: 0.6 } },
+      { age: 22, health: 4, energy: 80, gene: { threatRadius: 130, foodRadius: 120, avoidToxicity: 0.9, speed: 1.1, toxinResistance: 0.8 } },
     ],
     plants: [
       { age: 10, toxicity: 0 },
@@ -46,7 +46,9 @@ test('report summarizes population, events, toxicity, and resistance in plain-la
   );
   assert.equal(snapshot.plants.toxicFraction, 0.75);
   assert.equal(snapshot.sheep.resistance.resistantCount, 1);
-  assert.match(snapshot.observations.toxicity, /40% threshold/);
+  assert.equal(snapshot.wolves.averageEnergy, 65);
+  assert.equal(snapshot.sheep.averageEnergy, 70);
+  assert.match(snapshot.observations.toxicity, /inherited sheep resistance/);
   assert.equal(snapshot.settings.plantSpawnRate, 1.2);
 });
 
@@ -66,8 +68,13 @@ test('PDF is a valid two-page document containing the explanations and snapshot 
   assert.match(pdf, /\/Count 2/);
   assert.match(pdf, /Current populations and condition/);
   assert.match(pdf, /Rules in plain language/);
-  assert.match(pdf, /16-second cooldown/);
-  assert.match(pdf, /population cap of 180/);
+  assert.match(pdf, /Wolves hunt sheep and regain energy/);
+  assert.match(pdf, /at least 60 energy to reproduce/);
+  assert.match(pdf, /at least 64 energy to reproduce/);
+  assert.match(pdf, /cap 6/);
+  assert.match(pdf, /cap 80/);
+  assert.match(pdf, /do not gain resistance during life/);
+  assert.match(pdf, /Average energy/);
   assert.match(pdf, /Average toxicity/);
   assert.match(pdf, /Plant spawn rate/);
   const textPositions = [...pdf.matchAll(/BT \/F\d+ \d+(?:\.\d+)? Tf \d+ (-?\d+(?:\.\d+)?) Td/g)]
@@ -77,8 +84,8 @@ test('PDF is a valid two-page document containing the explanations and snapshot 
 
   const xrefStart = Number(pdf.match(/startxref\n(\d+)/)[1]);
   assert.equal(pdf.slice(xrefStart, xrefStart + 4), 'xref');
-  const xrefEntries = pdf.slice(xrefStart).match(/xref\n0 9\n([\s\S]*?)trailer/)[1].trimEnd().split('\n').slice(1);
-  for (let objectNumber = 1; objectNumber <= 8; objectNumber++) {
+  const xrefEntries = pdf.slice(xrefStart).match(/xref\n0 10\n([\s\S]*?)trailer/)[1].trimEnd().split('\n').slice(1);
+  for (let objectNumber = 1; objectNumber <= 9; objectNumber++) {
     const offset = Number(xrefEntries[objectNumber - 1].slice(0, 10));
     assert.ok(pdf.startsWith(`${objectNumber} 0 obj`, offset), `object ${objectNumber} offset should be correct`);
   }
@@ -109,6 +116,7 @@ test('empty populations still produce a readable report without non-finite value
 
   assert.equal(snapshot.plants.averageToxicity, 0);
   assert.equal(snapshot.sheep.resistance.average, 0);
+  assert.equal(snapshot.sheep.averageEnergy, 0);
   assert.doesNotMatch(pdf, /NaN|Infinity/);
   assert.match(pdf, /There are no plants to assess for toxicity/);
 });

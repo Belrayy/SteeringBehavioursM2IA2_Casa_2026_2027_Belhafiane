@@ -1,7 +1,10 @@
 const EcosystemReport = (() => {
+  const CONFIG = typeof module !== 'undefined' && module.exports
+    ? require('./ecosystemConfig.js')
+    : EcosystemConfig;
   const SPECIES = Object.freeze({
-    wolf: { maxHealth: 3, label: 'Wolves' },
-    sheep: { maxHealth: 4, label: 'Sheep' },
+    wolf: { maxHealth: CONFIG.wolf.maxHealth, maxEnergy: CONFIG.wolf.maxEnergy, label: 'Wolves' },
+    sheep: { maxHealth: CONFIG.sheep.maxHealth, maxEnergy: CONFIG.sheep.maxEnergy, label: 'Sheep' },
   });
 
   function mean(items, valueOf) {
@@ -26,16 +29,21 @@ const EcosystemReport = (() => {
     const sheep = sim.sheep;
     const wolves = sim.wolves;
     const sheepResistance = sheep.map((item) => item.gene.toxinResistance);
-    const resistantSheep = countWhere(sheep, (item) => item.gene.toxinResistance >= 0.75);
-    const safePlants = countWhere(plants, (item) => item.toxicity === 0);
-    const poisonousPlants = countWhere(plants, (item) => item.toxicity === 1);
-    const lethalPlants = countWhere(plants, (item) => item.toxicity === 2);
+    const resistantSheep = countWhere(
+      sheep,
+      (item) => item.gene.toxinResistance >= CONFIG.toxicity.lethalResistanceThreshold
+    );
+    const safePlants = countWhere(plants, (item) => item.toxicity === CONFIG.plant.safe);
+    const poisonousPlants = countWhere(plants, (item) => item.toxicity === CONFIG.plant.poisonous);
+    const lethalPlants = countWhere(plants, (item) => item.toxicity === CONFIG.plant.lethal);
 
     const speciesSummary = (items, type) => ({
       count: items.length,
       averageAge: mean(items, (item) => item.age),
       averageHealth: mean(items, (item) => item.health),
       averageHealthPercent: mean(items, (item) => item.health / SPECIES[type].maxHealth) * 100,
+      averageEnergy: mean(items, (item) => item.energy),
+      averageEnergyPercent: mean(items, (item) => item.energy / SPECIES[type].maxEnergy) * 100,
     });
 
     const toxicFraction = plants.length
@@ -84,7 +92,7 @@ const EcosystemReport = (() => {
       },
       wolves: {
         ...wolfSummary,
-        traits: meanTraits(wolves, ['pursuit', 'vision', 'chaseBias']),
+        traits: meanTraits(wolves, ['pursuit', 'vision', 'stamina']),
       },
       sheep: {
         ...sheepSummary,
@@ -94,9 +102,11 @@ const EcosystemReport = (() => {
           maximum: sheep.length ? Math.max(...sheepResistance) : 0,
           resistantCount: resistantSheep,
           bands: [
-            countWhere(sheep, (item) => item.gene.toxinResistance < 0.25),
-            countWhere(sheep, (item) => item.gene.toxinResistance >= 0.25 && item.gene.toxinResistance < 0.5),
-            countWhere(sheep, (item) => item.gene.toxinResistance >= 0.5 && item.gene.toxinResistance < 0.75),
+            countWhere(sheep, (item) => item.gene.toxinResistance < CONFIG.sheep.resistanceBands[0]),
+            countWhere(sheep, (item) => item.gene.toxinResistance >= CONFIG.sheep.resistanceBands[0]
+              && item.gene.toxinResistance < CONFIG.sheep.resistanceBands[1]),
+            countWhere(sheep, (item) => item.gene.toxinResistance >= CONFIG.sheep.resistanceBands[1]
+              && item.gene.toxinResistance < CONFIG.toxicity.lethalResistanceThreshold),
             resistantSheep,
           ],
         },
@@ -111,11 +121,9 @@ const EcosystemReport = (() => {
               : 'No wolves or sheep are currently present in this snapshot.',
         toxicity: plants.length === 0
           ? 'There are no plants to assess for toxicity.'
-          : toxicFraction >= 0.4
-            ? `${(toxicFraction * 100).toFixed(0)}% of plants are toxic. This meets the 40% threshold that triggers gradual sheep resistance adaptation.`
-            : `${(toxicFraction * 100).toFixed(0)}% of plants are toxic, below the 40% threshold for gradual sheep resistance adaptation.`,
+          : `${(toxicFraction * 100).toFixed(0)}% of plants are toxic. Toxicity falls as uneaten plants age, while inherited sheep resistance affects survival.`,
         resistance: sheep.length
-          ? `${resistantSheep} of ${sheep.length} sheep (${(resistantSheep / sheep.length * 100).toFixed(0)}%) meet the 0.75 resistance level needed to eat lethal plants.`
+          ? `${resistantSheep} of ${sheep.length} sheep (${(resistantSheep / sheep.length * 100).toFixed(0)}%) meet the ${(CONFIG.toxicity.lethalResistanceThreshold * 100).toFixed(0)}% resistance level needed to eat lethal plants.`
           : 'There are no sheep from which to measure toxin resistance.',
       },
     };
@@ -244,13 +252,13 @@ const EcosystemReport = (() => {
       ['Count', columnX[1]],
       ['Average age', columnX[2]],
       ['Average HP', columnX[3]],
-      ['Health', columnX[4]],
+      ['Average energy', columnX[4]],
     ], 9, true);
     page.rule('0.72 0.82 0.75', 10);
     page.gap(2);
     const rows = [
-      ['Wolves', report.wolves.count, report.wolves.averageAge, report.wolves.averageHealth, report.wolves.averageHealthPercent],
-      ['Sheep', report.sheep.count, report.sheep.averageAge, report.sheep.averageHealth, report.sheep.averageHealthPercent],
+      ['Wolves', report.wolves.count, report.wolves.averageAge, report.wolves.averageHealth, report.wolves.averageEnergyPercent],
+      ['Sheep', report.sheep.count, report.sheep.averageAge, report.sheep.averageHealth, report.sheep.averageEnergyPercent],
       ['Plants', report.plants.safe + report.plants.poisonous + report.plants.lethal, report.plants.averageAge, null, null],
     ];
     const maxHealth = { Wolves: SPECIES.wolf.maxHealth, Sheep: SPECIES.sheep.maxHealth };
@@ -265,7 +273,7 @@ const EcosystemReport = (() => {
       page.gap(1);
     }
     page.gap(3);
-    page.paragraph('HP means health points. Animals start with full health; safe food restores sheep health and toxic food can reduce it.', {
+    page.paragraph('HP means health points. Energy is used for movement and inherited-trait costs; animals lose health only when injured or starving.', {
       size: 8,
       maxCharacters: 100,
       color: [0.35, 0.42, 0.37],
@@ -317,17 +325,20 @@ const EcosystemReport = (() => {
 
     second.section('Sheep toxin resistance');
     second.paragraph(`Average: ${(report.sheep.resistance.average * 100).toFixed(1)}% | Highest: ${(report.sheep.resistance.maximum * 100).toFixed(1)}% | Able to eat lethal plants: ${report.sheep.resistance.resistantCount} of ${report.sheep.count}`, { size: 9, maxCharacters: 100 });
+    const firstBand = Math.round(CONFIG.sheep.resistanceBands[0] * 100);
+    const secondBand = Math.round(CONFIG.sheep.resistanceBands[1] * 100);
+    const lethalThreshold = Math.round(CONFIG.toxicity.lethalResistanceThreshold * 100);
     const bands = [
-      ['Low (0-24%)', report.sheep.resistance.bands[0]],
-      ['Developing (25-49%)', report.sheep.resistance.bands[1]],
-      ['Elevated (50-74%)', report.sheep.resistance.bands[2]],
-      ['Lethal-plant threshold (75%+)', report.sheep.resistance.bands[3]],
+      [`Low (0-${firstBand - 1}%)`, report.sheep.resistance.bands[0]],
+      [`Developing (${firstBand}-${secondBand - 1}%)`, report.sheep.resistance.bands[1]],
+      [`Elevated (${secondBand}-${lethalThreshold - 1}%)`, report.sheep.resistance.bands[2]],
+      [`Lethal-plant threshold (${lethalThreshold}%+)`, report.sheep.resistance.bands[3]],
     ];
     for (const [label, count] of bands) {
       second.text(`${label}: ${count} sheep`, 48, 9);
       second.bar(count, Math.max(report.sheep.count, 1), 48, 300);
     }
-    second.paragraph('Resistance is inherited with small mutations. Sheep develop it gradually only while at least 40% of plants are toxic. Resistance reduces poisonous and lethal feeding damage.', {
+    second.paragraph(`Resistance is inherited with small mutations; sheep do not gain resistance during life. It reduces toxic damage but costs energy (${CONFIG.sheep.resistanceEnergyDrain.toFixed(2)} energy per second at full resistance).`, {
       size: 9,
       maxCharacters: 98,
     });
@@ -335,7 +346,7 @@ const EcosystemReport = (() => {
     second.section('Average inherited behavior traits');
     const wolfTraits = report.wolves.traits;
     const sheepTraits = report.sheep.traits;
-    second.paragraph(`Wolves: pursuit ${wolfTraits.pursuit.toFixed(2)}, vision ${wolfTraits.vision.toFixed(1)}, chase bias ${wolfTraits.chaseBias.toFixed(2)}.`, { size: 9, maxCharacters: 100 });
+    second.paragraph(`Wolves: pursuit ${wolfTraits.pursuit.toFixed(2)}, vision ${wolfTraits.vision.toFixed(1)}, stamina ${wolfTraits.stamina.toFixed(2)}.`, { size: 9, maxCharacters: 100 });
     second.paragraph(`Sheep: threat radius ${sheepTraits.threatRadius.toFixed(1)}, food radius ${sheepTraits.foodRadius.toFixed(1)}, toxin avoidance ${sheepTraits.avoidToxicity.toFixed(2)}, speed ${sheepTraits.speed.toFixed(2)}.`, { size: 9, maxCharacters: 100 });
     second.paragraph('These are averages for the animals alive now, not fixed settings. Offspring inherit traits with bounded mutations.', {
       size: 8,
@@ -345,16 +356,16 @@ const EcosystemReport = (() => {
 
     second.section('Simulation setup');
     second.paragraph(`Initial population settings: ${report.settings.initialPlants} plants, ${report.settings.initialWolves} wolves, ${report.settings.initialSheep} sheep.`, { size: 9, maxCharacters: 100 });
-    second.paragraph(`Plant spawn rate: ${report.settings.plantSpawnRate.toFixed(2)} plants per simulated second. Current plant limit: 300.`, { size: 9, maxCharacters: 100 });
+    second.paragraph(`Plant spawn rate: ${report.settings.plantSpawnRate.toFixed(2)} plants per simulated second. Current plant limit: ${CONFIG.simulation.maxPlants}.`, { size: 9, maxCharacters: 100 });
     second.paragraph('At the plant limit, a new spawn replaces the oldest plant. Initial population settings take effect when Reset is used.', { size: 9, maxCharacters: 100 });
 
     second.section('Rules in plain language');
     const rules = [
-      'Wolves hunt sheep. A successful hunt restores wolf health. Wolves can reproduce after age 10 seconds, with a 16-second cooldown and a population cap of 12.',
-      'Sheep eat safe plants to restore health. Sheep can reproduce after age 1.5 seconds, with a 1-second cooldown and a population cap of 180.',
-      'Poisonous plants deal up to 1.4 HP damage; lethal plants deal up to 3.2 HP damage before resistance.',
-      'Plants that remain uneaten lose one toxicity level every 30 simulated seconds: lethal becomes poisonous, then safe.',
-      'Sheep below 75% resistance avoid lethal plants. No species loses health passively; animals grow with age.',
+      `Wolves hunt sheep and regain energy after a successful hunt. The ${CONFIG.wolf.huntCooldown}s base interval gets longer when sheep are scarce. They starve when energy is empty; a wolf needs age ${CONFIG.wolf.maturityAge}s and at least ${CONFIG.wolf.birthEnergyThreshold} energy to reproduce (cost ${CONFIG.wolf.reproductionEnergyCost}, cap ${CONFIG.wolf.populationCap}).`,
+      `Sheep eat plants for energy. They need age ${CONFIG.sheep.maturityAge}s and at least ${CONFIG.sheep.birthEnergyThreshold} energy to reproduce (cost ${CONFIG.sheep.reproductionEnergyCost}, cap ${CONFIG.sheep.populationCap}).`,
+      `Poisonous plants deal up to ${CONFIG.toxicity.poisonDamage} HP damage; lethal plants deal up to ${CONFIG.toxicity.lethalDamage} HP damage before resistance.`,
+      `Plants that remain uneaten lose one toxicity level every ${CONFIG.plant.detoxInterval} simulated seconds: lethal becomes poisonous, then safe.`,
+      `Sheep below ${Math.round(CONFIG.toxicity.lethalResistanceThreshold * 100)}% resistance avoid lethal plants. Energy reaches zero before starvation begins reducing health.`,
       'Plants grow until eaten or replaced. New plant toxicity follows the current field average, with small mutations.',
       'Birth and removal totals are cumulative since the last reset. Plant removals include eaten plants and replacements, not just deaths.',
     ];

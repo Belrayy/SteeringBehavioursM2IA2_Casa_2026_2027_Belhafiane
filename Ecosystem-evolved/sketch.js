@@ -1,8 +1,8 @@
 const settings = {
-  initialPlants: 60,
-  initialWolves: 5,
-  initialSheep: 32,
-  plantSpawnRate: 1.2,
+  initialPlants: EcosystemConfig.initial.plants,
+  initialWolves: EcosystemConfig.initial.wolves,
+  initialSheep: EcosystemConfig.initial.sheep,
+  plantSpawnRate: EcosystemConfig.initial.plantSpawnRate,
 };
 
 const sim = {
@@ -26,13 +26,13 @@ const sim = {
 
 const ui = {};
 const TOXICITY = {
-  SAFE: 0,
-  POISONOUS: 1,
-  LETHAL: 2,
+  SAFE: EcosystemConfig.plant.safe,
+  POISONOUS: EcosystemConfig.plant.poisonous,
+  LETHAL: EcosystemConfig.plant.lethal,
 };
 
 function setup() {
-  randomSeed(2026);
+  randomSeed(EcosystemConfig.simulation.seed);
   createCanvas(windowWidth, windowHeight, WEBGL);
   pixelDensity(1);
   initControls();
@@ -56,7 +56,7 @@ function initControls() {
         <label>Plant spawn rate</label>
         <span id="plantSpawnValue">1.20 plants/s</span>
       </div>
-      <input id="plantSpawnSlider" type="range" min="0" max="2" step="0.05" value="1.2">
+      <input id="plantSpawnSlider" type="range" min="0" max="${EcosystemConfig.simulation.maxPlantSpawnRate}" step="0.05" value="${EcosystemConfig.initial.plantSpawnRate}">
     </div>
     <div class="control-group">
       <div class="label-row">
@@ -86,9 +86,9 @@ function initControls() {
     <div class="legend">
       <div class="legend-title">Plant toxicity</div>
       <div class="legend-item"><span class="dot safe"></span>Safe: heals sheep</div>
-      <div class="legend-item"><span class="dot poisonous"></span>Poisonous: 1.4 HP damage before resistance</div>
-      <div class="legend-item"><span class="dot lethal"></span>Lethal: 3.2 HP; only highly resistant sheep eat it</div>
-      <p class="rule-note">No passive HP drain: animals grow with age. Eating can restore HP or cause toxicity damage. Plants that remain uneaten reduce toxicity by one level every 30 seconds, becoming safe after enough time. When over 40% of plants are toxic, sheep develop resistance and pass it down with small mutations. New plants track the field's average toxicity. At 300 plants, new spawns replace the oldest.</p>
+      <div class="legend-item"><span class="dot poisonous"></span>Poisonous: ${EcosystemConfig.toxicity.poisonDamage} HP damage before resistance</div>
+      <div class="legend-item"><span class="dot lethal"></span>Lethal: ${EcosystemConfig.toxicity.lethalDamage} HP; only resistant sheep eat it</div>
+      <p class="rule-note">Movement and costly traits use energy. Food restores energy, and animals starve if it runs out. Reproduction costs energy. Toxin resistance is inherited with small mutations; higher resistance costs more energy. Plants detoxify one level every ${EcosystemConfig.plant.detoxInterval} seconds. At ${EcosystemConfig.simulation.maxPlants} plants, new spawns replace the oldest.</p>
     </div>
     <div id="statsPanel" class="stats-panel"></div>
   `);
@@ -147,6 +147,7 @@ function toggleSimulation() {
 }
 
 function resetSimulation() {
+  randomSeed(EcosystemConfig.simulation.seed);
   sim.time = 0;
   sim.deaths = 0;
   sim.births = 0;
@@ -189,7 +190,7 @@ function draw() {
 
   if (sim.running) {
     sim.tickAccumulator = Math.min(0.2, sim.tickAccumulator + deltaTime / 1000);
-    const dt = 1 / 60;
+    const dt = EcosystemConfig.simulation.fixedStep;
     while (sim.tickAccumulator >= dt) {
       sim.time += dt;
       spawnPlantsByRate(dt);
@@ -212,7 +213,7 @@ function spawnPlantsByRate(dt) {
   sim.plantSpawnAccumulator += settings.plantSpawnRate * dt;
   while (sim.plantSpawnAccumulator >= 1) {
     sim.plantSpawnAccumulator -= 1;
-    if (sim.plants.length >= 300) {
+    if (sim.plants.length >= EcosystemConfig.simulation.maxPlants) {
       const oldest = sim.plants.reduce((current, plant) => plant.age > current.age ? plant : current);
       sim.plants.splice(sim.plants.indexOf(oldest), 1);
       sim.deaths += 1;
@@ -220,7 +221,8 @@ function spawnPlantsByRate(dt) {
     }
     const toxicity = EcosystemRules.sampleToxicityFromAverage(
       EcosystemRules.averageToxicity(sim.plants),
-      () => random()
+      () => random(),
+      EcosystemConfig.plant.mutationRate
     );
     sim.plants.push(new Plant(random(width * 0.08, width * 0.92), random(height * 0.18, height * 0.92), toxicity));
     sim.births += 1;
@@ -231,7 +233,7 @@ function spawnPlantsByRate(dt) {
 function updateWolves(dt) {
   for (let i = sim.wolves.length - 1; i >= 0; i--) {
     const wolf = sim.wolves[i];
-    wolf.update(dt, sim.sheep, sim.plants, sim.wolves);
+    wolf.update(dt, sim.sheep);
     if (wolf.isDead()) {
       sim.wolves.splice(i, 1);
       sim.deaths += 1;
@@ -281,6 +283,8 @@ function renderHud() {
     : '0.00';
   const avgSheepHealth = sim.sheep.length ? (sim.sheep.reduce((sum, item) => sum + item.health, 0) / sim.sheep.length).toFixed(2) : '0.00';
   const avgWolfHealth = sim.wolves.length ? (sim.wolves.reduce((sum, item) => sum + item.health, 0) / sim.wolves.length).toFixed(2) : '0.00';
+  const avgWolfEnergy = sim.wolves.length ? sim.wolves.reduce((sum, item) => sum + item.energy, 0) / sim.wolves.length : 0;
+  const avgSheepEnergy = sim.sheep.length ? sim.sheep.reduce((sum, item) => sum + item.energy, 0) / sim.sheep.length : 0;
 
   ui.statsPanel.html(`
     <div class="stat-grid">
@@ -292,6 +296,8 @@ function renderHud() {
       <div><span class="stat-label">Births</span><strong>${sim.births}</strong></div>
       <div><span class="stat-label">Avg wolf HP</span><strong>${avgWolfHealth}</strong></div>
       <div><span class="stat-label">Avg sheep HP</span><strong>${avgSheepHealth}</strong></div>
+      <div><span class="stat-label">Avg wolf energy</span><strong>${avgWolfEnergy.toFixed(0)}%</strong></div>
+      <div><span class="stat-label">Avg sheep energy</span><strong>${avgSheepEnergy.toFixed(0)}%</strong></div>
       <div><span class="stat-label">Avg wolf age</span><strong>${avgWolfAge}s</strong></div>
       <div><span class="stat-label">Avg sheep age</span><strong>${avgSheepAge}s</strong></div>
       <div><span class="stat-label">Avg plant age</span><strong>${avgPlantAge}s</strong></div>
@@ -345,6 +351,8 @@ class LivingEntity extends Vehicle {
     super(x, y, dna);
     this.maxHealth = maxHealth;
     this.health = maxHealth;
+    this.maxEnergy = 100;
+    this.energy = this.maxEnergy;
     this.age = 0;
     this.size = 1;
     this.detectionRadius = 60;
@@ -368,35 +376,65 @@ class LivingEntity extends Vehicle {
     super.update();
     this.health = health;
   }
+
+  updateEnergy(dt, drainRate, starvationDamagePerSecond) {
+    this.energy = EcosystemRules.updateEnergy(this.energy, 0, drainRate, dt, this.maxEnergy);
+    this.health = Math.max(
+      0,
+      this.health - EcosystemRules.starvationDamage(this.energy, dt, starvationDamagePerSecond)
+    );
+  }
 }
 
 class Wolf extends LivingEntity {
   constructor(x, y, geneSet) {
-    super(x, y, 3, undefined);
+    super(x, y, EcosystemConfig.wolf.maxHealth, undefined);
     this.type = 'wolf';
-    this.maxSpeed = 1.7;
-    this.maxForce = 0.14;
+    this.maxEnergy = EcosystemConfig.wolf.maxEnergy;
+    this.energy = EcosystemConfig.wolf.initialEnergy;
+    this.baseMaxSpeed = EcosystemConfig.wolf.baseSpeed;
+    this.maxSpeed = this.baseMaxSpeed;
+    this.maxForce = EcosystemConfig.wolf.maxForce;
     this.r = 10;
     this.size = 1.0;
     this.detectionRadius = 130;
     const baseGene = geneSet || {
-      pursuit: 1.1 + random(-0.15, 0.25),
-      vision: 130 + random(-25, 35),
-      chaseBias: 1.0 + random(-0.2, 0.25),
+      pursuit: EcosystemConfig.wolf.pursuitInitial
+        + random(...EcosystemConfig.wolf.pursuitInitialMutation),
+      vision: EcosystemConfig.wolf.initialVision
+        + random(...EcosystemConfig.wolf.visionInitialMutation),
+      stamina: EcosystemConfig.wolf.staminaInitial
+        + random(...EcosystemConfig.wolf.staminaInitialMutation),
     };
     this.gene = {
-      pursuit: clamp(baseGene.pursuit + random(-0.07, 0.07), 0.75, 1.8),
-      vision: clamp(baseGene.vision + random(-10, 10), 70, 180),
-      chaseBias: clamp(baseGene.chaseBias + random(-0.08, 0.08), 0.7, 1.5),
+      pursuit: clamp(
+        baseGene.pursuit + random(-EcosystemConfig.wolf.pursuitMutation, EcosystemConfig.wolf.pursuitMutation),
+        EcosystemConfig.wolf.pursuitMin,
+        EcosystemConfig.wolf.pursuitMax
+      ),
+      vision: clamp(
+        baseGene.vision + random(-EcosystemConfig.wolf.visionMutation, EcosystemConfig.wolf.visionMutation),
+        EcosystemConfig.wolf.visionMin,
+        EcosystemConfig.wolf.visionMax
+      ),
+      stamina: clamp(
+        baseGene.stamina + random(-EcosystemConfig.wolf.staminaMutation, EcosystemConfig.wolf.staminaMutation),
+        EcosystemConfig.wolf.staminaMin,
+        EcosystemConfig.wolf.staminaMax
+      ),
     };
+    this.maxSpeed = this.baseMaxSpeed * this.gene.stamina;
     this.detectionRadius = this.gene.vision;
     this.lastBirthAt = -Infinity;
+    this.lastHuntAt = -Infinity;
+    this.wanderHeading = this.vel.heading();
     this.health = this.maxHealth;
   }
 
-  update(dt, sheepList, plantList) {
+  update(dt, sheepList) {
     this.age += dt;
     this.size = clamp(1 + this.age * 0.05, 1, 1.8);
+    this.maxSpeed = this.baseMaxSpeed * this.gene.stamina * (0.45 + 0.55 * this.energy / this.maxEnergy);
 
     let closestSheep = null;
     let closestDist = Infinity;
@@ -411,17 +449,30 @@ class Wolf extends LivingEntity {
     if (closestSheep) {
       const desired = p5.Vector.sub(closestSheep.pos, this.pos);
       desired.normalize();
-      desired.mult(this.maxSpeed * this.gene.pursuit * this.gene.chaseBias);
+      desired.mult(this.maxSpeed * this.gene.pursuit);
       const steer = p5.Vector.sub(desired, this.vel);
       steer.limit(this.maxForce * 1.8);
       this.applyForce(steer);
 
-      if (closestDist < this.r + closestSheep.r + 6) {
-        closestSheep.health = 0;
-        this.health = clamp(this.health + 1.2, 0, this.maxHealth);
+      const huntCooldown = EcosystemRules.predationCooldown(
+        sheepList.length,
+        EcosystemConfig.wolf.huntCooldown,
+        EcosystemConfig.wolf.huntPreyReference
+      );
+      if (closestDist < this.r + closestSheep.r + 6
+        && sim.time - this.lastHuntAt >= huntCooldown) {
         const index = sheepList.indexOf(closestSheep);
         if (index >= 0) {
           sheepList.splice(index, 1);
+          this.lastHuntAt = sim.time;
+          this.health = clamp(this.health + 1.2, 0, this.maxHealth);
+          this.energy = EcosystemRules.updateEnergy(
+            this.energy,
+            EcosystemConfig.wolf.mealEnergy,
+            0,
+            dt,
+            this.maxEnergy
+          );
           sim.deaths += 1;
           sim.animalDeaths += 1;
           this.reproduceAfterFeeding();
@@ -429,20 +480,53 @@ class Wolf extends LivingEntity {
       }
     }
 
-    const wander = createVector(random(-1, 1), random(-1, 1));
-    wander.normalize();
-    wander.mult(this.maxForce * 0.2);
-    this.applyForce(wander);
+    if (!closestSheep) {
+      this.wanderHeading = SheepSteering.updateWanderHeading(
+        this.wanderHeading,
+        random(-0.08, 0.08)
+      );
+      const wander = SheepSteering.wanderForce(
+        this.vel,
+        this.wanderHeading,
+        this.maxSpeed,
+        this.maxForce * 0.2
+      );
+      this.applyForce(createVector(wander.x, wander.y));
+    }
+    const visionCost = (this.gene.vision - EcosystemConfig.wolf.visionMin)
+      / (EcosystemConfig.wolf.visionMax - EcosystemConfig.wolf.visionMin)
+      * EcosystemConfig.wolf.visionEnergyDrain;
+    const drainRate = EcosystemRules.energyDrainRate(
+      EcosystemConfig.wolf.baseEnergyDrain,
+      EcosystemConfig.wolf.movementEnergyDrain * this.gene.stamina,
+      this.vel.mag() / Math.max(this.maxSpeed, 0.01),
+      visionCost
+    );
+    this.updateEnergy(dt, drainRate, EcosystemConfig.wolf.starvationDamagePerSecond);
     this.move();
   }
 
   reproduceAfterFeeding() {
-    if (!EcosystemRules.canReproduce(this.age, this.lastBirthAt, sim.time, 10, 16, sim.wolves.length, 12)) return;
-    sim.wolves.push(new Wolf(
+    const config = EcosystemConfig.wolf;
+    if (!EcosystemRules.canReproduce(
+      this.age,
+      this.lastBirthAt,
+      sim.time,
+      config.maturityAge,
+      config.reproductionCooldown,
+      sim.wolves.length,
+      config.populationCap,
+      this.energy,
+      config.birthEnergyThreshold
+    )) return;
+    this.energy -= config.reproductionEnergyCost;
+    const offspring = new Wolf(
       this.pos.x + random(-18, 18),
       this.pos.y + random(-18, 18),
       { ...this.gene }
-    ));
+    );
+    offspring.energy = config.offspringEnergy;
+    sim.wolves.push(offspring);
     this.lastBirthAt = sim.time;
     sim.births += 1;
     sim.wolfBirths += 1;
@@ -452,9 +536,12 @@ class Wolf extends LivingEntity {
 
 class Sheep extends LivingEntity {
   constructor(x, y, geneSet) {
-    super(x, y, 4, undefined);
+    super(x, y, EcosystemConfig.sheep.maxHealth, undefined);
     this.type = 'sheep';
-    this.maxSpeed = 3.2;
+    this.maxEnergy = EcosystemConfig.sheep.maxEnergy;
+    this.energy = EcosystemConfig.sheep.initialEnergy;
+    this.baseMaxSpeed = EcosystemConfig.sheep.baseSpeed;
+    this.maxSpeed = this.baseMaxSpeed;
     this.maxForce = 0.14;
     this.r = 9;
     this.detectionRadius = 110;
@@ -463,7 +550,7 @@ class Sheep extends LivingEntity {
       foodRadius: 120 + random(-15, 25),
       avoidToxicity: 0.9 + random(-0.2, 0.4),
       speed: 0.95 + random(-0.1, 0.25),
-      toxinResistance: 0.05 + random(0, 0.18),
+      toxinResistance: random(0, EcosystemConfig.toxicity.maximumResistance),
     };
     this.gene = {
       threatRadius: clamp(baseGene.threatRadius + random(-8, 8), 80, 170),
@@ -484,11 +571,9 @@ class Sheep extends LivingEntity {
   update(dt, wolfList, plantList) {
     this.age += dt;
     this.size = clamp(1 + this.age * 0.04, 1, 1.9);
-    this.gene.toxinResistance = EcosystemRules.adaptResistance(
-      this.gene.toxinResistance,
-      EcosystemRules.toxicPlantFraction(plantList),
-      dt
-    );
+    this.maxSpeed = this.baseMaxSpeed
+      * this.gene.speed
+      * (0.45 + 0.55 * this.energy / this.maxEnergy);
 
     let closestWolf = null;
     let closestWolfDist = Infinity;
@@ -503,7 +588,7 @@ class Sheep extends LivingEntity {
     if (closestWolf) {
       const flee = p5.Vector.sub(this.pos, closestWolf.pos);
       flee.normalize();
-      flee.mult(this.maxSpeed * 2.2 * this.gene.speed);
+      flee.mult(this.maxSpeed * 2.2);
       const steer = p5.Vector.sub(flee, this.vel);
       steer.limit(this.maxForce * 2.4);
       this.applyForce(steer);
@@ -513,7 +598,8 @@ class Sheep extends LivingEntity {
       for (const plant of plantList) {
         const d = p5.Vector.dist(this.pos, plant.pos);
         if (d > plant.r + this.r + 2 && d < this.gene.foodRadius) {
-          if (plant.toxicity === TOXICITY.LETHAL && this.gene.toxinResistance < 0.75) continue;
+          if (plant.toxicity === TOXICITY.LETHAL
+            && this.gene.toxinResistance < EcosystemConfig.toxicity.lethalResistanceThreshold) continue;
           const toxicityPenalty = EcosystemRules.toxinDamage(plant.toxicity, this.gene.toxinResistance) * 34;
           const score = 180 - d - toxicityPenalty * this.gene.avoidToxicity;
           if (score > bestScore) {
@@ -525,7 +611,7 @@ class Sheep extends LivingEntity {
       if (bestPlant) {
         const desired = p5.Vector.sub(bestPlant.pos, this.pos);
         desired.normalize();
-        desired.mult(this.maxSpeed * 1.3 * this.gene.speed);
+        desired.mult(this.maxSpeed * 1.3);
         const steer = p5.Vector.sub(desired, this.vel);
         steer.limit(this.maxForce * 1.7);
         this.applyForce(steer);
@@ -537,7 +623,7 @@ class Sheep extends LivingEntity {
         const wanderForce = SheepSteering.wanderForce(
           this.vel,
           this.wanderHeading,
-          this.maxSpeed * this.gene.speed,
+          this.maxSpeed,
           this.maxForce * 0.7
         );
         this.applyForce(createVector(wanderForce.x, wanderForce.y));
@@ -549,11 +635,16 @@ class Sheep extends LivingEntity {
       const plant = plantList[i];
       const d = p5.Vector.dist(this.pos, plant.pos);
       if (d < plant.r + this.r + 4) {
-        if (plant.toxicity === TOXICITY.LETHAL && this.gene.toxinResistance < 0.75) continue;
+        if (plant.toxicity === TOXICITY.LETHAL
+          && this.gene.toxinResistance < EcosystemConfig.toxicity.lethalResistanceThreshold) continue;
         const damage = EcosystemRules.toxinDamage(plant.toxicity, this.gene.toxinResistance);
         this.health = plant.toxicity === TOXICITY.SAFE
           ? clamp(this.health + 1.2, 0, this.maxHealth)
           : clamp(this.health - damage, 0, this.maxHealth);
+        const mealEnergy = plant.toxicity === TOXICITY.SAFE
+          ? EcosystemConfig.sheep.foodEnergy
+          : EcosystemConfig.sheep.toxicFoodEnergy;
+        this.energy = EcosystemRules.updateEnergy(this.energy, mealEnergy, 0, dt, this.maxEnergy);
         plant.health = 0;
         plantList.splice(i, 1);
         sim.deaths += 1;
@@ -566,16 +657,41 @@ class Sheep extends LivingEntity {
       this.health = 0;
     }
 
+    const visionCost = (this.gene.foodRadius - EcosystemConfig.sheep.foodRadiusMin)
+      / (EcosystemConfig.sheep.foodRadiusMax - EcosystemConfig.sheep.foodRadiusMin)
+      * 0.08;
+    const resistanceCost = this.gene.toxinResistance * EcosystemConfig.sheep.resistanceEnergyDrain;
+    const drainRate = EcosystemRules.energyDrainRate(
+      EcosystemConfig.sheep.baseEnergyDrain,
+      EcosystemConfig.sheep.movementEnergyDrain * this.gene.speed,
+      this.vel.mag() / Math.max(this.maxSpeed, 0.01),
+      visionCost + resistanceCost
+    );
+    this.updateEnergy(dt, drainRate, EcosystemConfig.sheep.starvationDamagePerSecond);
     this.move();
   }
 
   reproduceAfterFeeding() {
-    if (!EcosystemRules.canReproduce(this.age, this.lastBirthAt, sim.time, 1.5, 1, sim.sheep.length, 180)) return;
-    sim.sheep.push(new Sheep(
+    const config = EcosystemConfig.sheep;
+    if (!EcosystemRules.canReproduce(
+      this.age,
+      this.lastBirthAt,
+      sim.time,
+      config.maturityAge,
+      config.reproductionCooldown,
+      sim.sheep.length,
+      config.populationCap,
+      this.energy,
+      config.birthEnergyThreshold
+    )) return;
+    this.energy -= config.reproductionEnergyCost;
+    const offspring = new Sheep(
       this.pos.x + random(-20, 20),
       this.pos.y + random(-20, 20),
       { ...this.gene }
-    ));
+    );
+    offspring.energy = config.offspringEnergy;
+    sim.sheep.push(offspring);
     this.lastBirthAt = sim.time;
     sim.births += 1;
     sim.sheepBirths += 1;
@@ -585,7 +701,7 @@ class Sheep extends LivingEntity {
 
 class Plant extends LivingEntity {
   constructor(x, y, inheritedToxicity) {
-    super(x, y, 5, undefined);
+    super(x, y, EcosystemConfig.plant.maxHealth, undefined);
     this.type = 'plant';
     this.maxSpeed = 0;
     this.maxForce = 0;
